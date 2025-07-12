@@ -28,8 +28,15 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const sdl_dep = b.dependency("sdl3", .{ .ext_image = true });
+    const sdl_dep = b.dependency("sdl3", .{
+        .target = target,
+        .optimize = optimize,
+        .ext_image = true,
+    });
     const sdl_mod = sdl_dep.module("sdl3");
+
+    const freetype_dep = b.dependency("zig_freetype2", .{});
+    const freetype_mod = freetype_dep.module("zig_freetype2");
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
         // `root_source_file` is the Zig "entry point" of the module. If a module
@@ -39,8 +46,18 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{
+                .name = "sdl3",
+                .module = sdl_mod,
+            },
+            .{
+                .name = "freetype",
+                .module = freetype_mod,
+            },
+        },
     });
-    exe_mod.addImport("sdl3", sdl_mod);
+    //exe_mod.addImport("sdl3", sdl_mod);
 
     // currently calling SDL_CreateTextureFromSurface
     // on a surface that was created by calling TTF_RenderText_Solid
@@ -75,7 +92,7 @@ pub fn build(b: *std.Build) void {
         .name = "AV",
         .root_module = exe_mod,
         .use_lld = false,
-        //.use_llvm = false,
+        // .use_llvm = false,
     });
 
     exe.linkSystemLibrary("SDL3_ttf");

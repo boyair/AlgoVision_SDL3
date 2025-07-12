@@ -1,6 +1,6 @@
 const std = @import("std");
 const sdl = @import("sdl3");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 const View = @import("../view.zig");
 const helpers = @import("../SDL_helpers.zig");
 const Self = @This();
@@ -8,7 +8,7 @@ blocks: std.hash_map.AutoHashMap(*anyopaque, Block),
 byte_bg: sdl.render.Texture,
 /// used to make textures for block
 renderer: ?sdl.render.Renderer, // an optional to allow "headless" structs
-default_font: *ttf.TTF_Font,
+default_font: ft.Face,
 allocator: std.mem.Allocator,
 draw_scale: usize = 50, //scale between struct rect and texture rect
 area: sdl.rect.IRect,
@@ -187,7 +187,7 @@ pub fn override(self: *Self, ptr: *anyopaque, block: Block) void {
     block_ptr.* = block;
 }
 
-pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, area: sdl.rect.IRect, bg_texture_path: []const u8, block_texture_path: []const u8, font: *ttf.TTF_Font) !Self {
+pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, area: sdl.rect.IRect, bg_texture_path: []const u8, block_texture_path: []const u8, font: ft.Face) !Self {
     return Self{
         .blocks = std.hash_map.AutoHashMap(*anyopaque, Block).init(allocator),
         .area = area,
@@ -257,7 +257,7 @@ const Field = struct {
 };
 
 pub const Design = struct {
-    font: *ttf.TTF_Font,
+    font: ft.Face,
     text_color: sdl.pixels.Color,
 };
 

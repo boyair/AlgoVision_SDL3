@@ -1,6 +1,6 @@
 const std = @import("std");
 const sdl = @import("sdl3");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 const helpers = @import("../SDL_helpers.zig");
 const View = @import("../view.zig");
 const Self = @This();
@@ -8,12 +8,12 @@ stack_frame: std.ArrayList(Block),
 block_texture: sdl.render.Texture,
 /// used to make textures for block
 renderer: sdl.render.Renderer,
-default_font: *ttf.TTF_Font,
+default_font: ft.Face,
 allocator: std.mem.Allocator,
 base_rect: sdl.rect.FRect,
 top: usize = 0,
 
-pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, rect: sdl.rect.FRect, block_texture_path: []const u8, font: *ttf.TTF_Font) !Self {
+pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, rect: sdl.rect.FRect, block_texture_path: []const u8, font: ft.Face) !Self {
     return Self{
         .stack_frame = std.ArrayList(Block).init(allocator),
         .renderer = renderer,
@@ -31,7 +31,7 @@ pub fn deinit(self: *Self) void {
     }
     self.stack_frame.deinit();
     self.block_texture.deinit();
-    ttf.TTF_CloseFont(self.default_font);
+    self.default_font.deinit();
 }
 
 pub fn draw(self: *Self, renderer: sdl.render.Renderer, view: ?View) !void {
@@ -129,7 +129,7 @@ pub const Block = struct {
 };
 
 pub const Design = struct {
-    font: *ttf.TTF_Font,
+    font: ft.Face,
     text_color: sdl.pixels.Color,
     text_limit: ?usize = 15, //limits the text length when making texture
 };

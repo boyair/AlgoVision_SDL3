@@ -4,7 +4,7 @@ const SpaceFinder = @import("spacefinder.zig").spaceFinder;
 pub const Internal = @import("internal.zig");
 const OperationManager = @import("../action/operation_manager.zig");
 const Camera = @import("../camera_motion.zig");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 
 const Self = @This();
 data: Internal,
@@ -13,7 +13,7 @@ operations: *OperationManager,
 existing_rects: std.hash_map.AutoHashMap(*anyopaque, sdl.rect.IRect),
 space_finder: SpaceFinder(sdl.rect.IntegerType, 2),
 
-pub fn init(self: *Self, operations: *OperationManager, area: sdl.rect.IRect, allocator: std.mem.Allocator, renderer: sdl.render.Renderer, bg_texture_path: []const u8, block_texture_path: []const u8, font: *ttf.TTF_Font) !void {
+pub fn init(self: *Self, operations: *OperationManager, area: sdl.rect.IRect, allocator: std.mem.Allocator, renderer: sdl.render.Renderer, bg_texture_path: []const u8, block_texture_path: []const u8, font: ft.Face) !void {
     self.data = try Internal.init(allocator, renderer, area, bg_texture_path, block_texture_path, font);
     self.existing_rects = std.hash_map.AutoHashMap(*anyopaque, sdl.rect.IRect).init(allocator);
     self.space_finder = SpaceFinder(sdl.rect.IntegerType, 2).init(allocator, 10, area) catch @panic("alloc error");

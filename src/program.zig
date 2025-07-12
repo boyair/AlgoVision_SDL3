@@ -1,6 +1,6 @@
 const std = @import("std");
 const sdl = @import("sdl3");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 const View = @import("view.zig");
 const Helpers = @import("SDL_helpers.zig");
 const OperationManager = @import("action/operation_manager.zig");
@@ -105,17 +105,17 @@ pub fn init(allocator: std.mem.Allocator) !*Self {
         .ui_texture = try renderer.createTexture(.packed_rgba_8_8_8_8, .target, 1000, 1000),
         .ui_bg = try Helpers.loadImage(renderer, "assets/ui/menu.png", allocator),
         //TODO: make actual textures for those buttons
-        .fastforward_btn = UI.Button.init(&ret.fastforward_btn_pressed, .{ .x = 800, .y = 50, .w = 150, .h = 150 }, .{ .texture = try Helpers.createTextureFromText(stack_font, ">", .{ .r = 255, .g = 255, .b = 255, .a = 255 }, renderer) }),
-        .undo_btn = UI.Button.init(&ret.undo_btn_pressed, .{ .x = 50, .y = 50, .w = 150, .h = 150 }, .{ .texture = try Helpers.createTextureFromText(stack_font, "<", .{ .r = 255, .g = 255, .b = 255, .a = 255 }, renderer) }),
+        .fastforward_btn = UI.Button.init(&ret.fastforward_btn_pressed, .{ .x = 800, .y = 100, .w = 150, .h = 100 }, .{ .texture = try Helpers.createTextureFromText(stack_font, ">", .{ .r = 255, .g = 255, .b = 255, .a = 255 }, renderer) }),
+        .undo_btn = UI.Button.init(&ret.undo_btn_pressed, .{ .x = 50, .y = 100, .w = 150, .h = 100 }, .{ .texture = try Helpers.createTextureFromText(stack_font, "<", .{ .r = 255, .g = 255, .b = 255, .a = 255 }, renderer) }),
         .speed_slider = UI.Slider.init(
             &ret.playback_speed,
             .{ .x = 50, .y = 265, .w = 700, .h = 70 },
-            .{ .range = .{ .min = 0.2, .max = 10 }, .show_text = true, .text_font = stack_font },
+            .{ .range = .{ .min = 0.2, .max = 10 }, .show_text = true, .text_font = stack_font, .text_color = .{ .r = 255, .g = 0, .b = 0, .a = 255 } },
         ),
         .pause_checkbox = UI.Checkbox.init(&ret.pause, .{ .x = 770, .y = 250, .w = 200, .h = 100 }),
         .freecam_checkbox = UI.Checkbox.init(&ret.freecam, .{ .x = 640, .y = 400, .w = 200, .h = 100 }),
         .freecam_text = UI.Text.init(&ret.freecam_text_data, .{ .x = 20, .y = 400, .w = 600, .h = 100 }, .{ .font = stack_font }),
-        .action_display = UI.Text.init(&ret.current_action, .{ .x = 250, .y = 50, .w = 500, .h = 150 }, .{ .font = stack_font }),
+        .action_display = UI.Text.init(&ret.current_action, .{ .x = 250, .y = 100, .w = 500, .h = 100 }, .{ .font = stack_font }),
     };
 
     //members must be initiallized after ret has been allocated

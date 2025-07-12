@@ -1,7 +1,7 @@
 const std = @import("std");
 const ui = @import("UI.zig");
 const sdl = @import("sdl3");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 const helpers = @import("../SDL_helpers.zig");
 
 //TODO: rename to proeprties here and in UI
@@ -19,7 +19,7 @@ const Design = struct {
     frame_color: sdl.pixels.Color = .{ .r = 127, .g = 127, .b = 127, .a = 255 },
     show_text: bool = false,
     text_color: sdl.pixels.Color = .{ .r = 0, .g = 0, .b = 0, .a = 255 },
-    text_font: ?*ttf.TTF_Font = null,
+    text_font: ?ft.Face = null,
     text_convert: ?*const fn (value: f32, buff: []u8) ?[]const u8 = null,
     pub fn deinit(self: *Design) void {
         _ = self;

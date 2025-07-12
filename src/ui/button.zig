@@ -1,7 +1,7 @@
 const std = @import("std");
 const ui = @import("UI.zig");
 const sdl = @import("sdl3");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 const helpers = @import("../SDL_helpers.zig");
 
 pub const Button = ui.interactiveElement(

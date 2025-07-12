@@ -1,11 +1,11 @@
 const std = @import("std");
 const ui = @import("UI.zig");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
 const sdl = @import("sdl3");
 const helpers = @import("../SDL_helpers.zig");
 
 const Design = struct {
-    font: *ttf.TTF_Font,
+    font: ft.Face,
     color: sdl.pixels.Color = .{ .r = 255, .g = 255, .b = 255, .a = 255 },
     pub fn deinit(self: *Design) void {
         _ = self;

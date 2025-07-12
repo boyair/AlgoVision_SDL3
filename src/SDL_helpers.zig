@@ -1,10 +1,11 @@
 const std = @import("std");
 const sdl = @import("sdl3");
-const ttf = @cImport(@cInclude("SDL3_ttf/SDL_ttf.h"));
+const ft = @import("freetype");
+const TextRenderer = @import("textrenderer.zig");
 const mixer = @cImport(@cInclude("SDL3_mixer/SDL_mixer.h"));
 var exe_path: []const u8 = undefined;
-
-///the use of c Libs for ttf and mixer
+var text_renderer: TextRenderer = undefined;
+///the use of c Libs for const ft = @import("freetype"); and mixer
 ///requires constant checks for errors.
 ///this function meant to reduce code for such repetetive operation.
 pub fn checkError(success: bool) sdl.errors.Error!void {
@@ -21,7 +22,7 @@ pub fn initSDL(allocator: std.mem.Allocator) !struct { sdl.video.Window, sdl.ren
         .video = true,
         .audio = true,
     });
-    try checkError(ttf.TTF_Init());
+    text_renderer = try TextRenderer.init(allocator);
     //_ = mixer.Mix_Init(mixer.MIX_INIT_WAVPACK);
     //try checkError(mixer.Mix_OpenAudio(0x8010, 44100));
     const window = try sdl.video.Window.init(
@@ -39,10 +40,10 @@ pub fn initSDL(allocator: std.mem.Allocator) !struct { sdl.video.Window, sdl.ren
 pub fn deinitSDL(window: sdl.video.Window, renderer: sdl.render.Renderer, allocator: std.mem.Allocator) void {
     allocator.free(exe_path);
     renderer.deinit();
+    text_renderer.deinit();
     window.deinit();
     mixer.Mix_CloseAudio();
     mixer.Mix_Quit();
-    ttf.TTF_Quit();
     sdl.init.quit(.{ .video = true, .audio = true });
 }
 
@@ -72,17 +73,13 @@ pub fn loadWav(relative_path: []const u8, allocator: std.mem.Allocator) ![*c]mix
     return mixer.Mix_LoadWAV(full_path);
 }
 
-pub fn loadFont(relative_path: []const u8, allocator: std.mem.Allocator) !*ttf.TTF_Font {
+pub fn loadFont(relative_path: []const u8, allocator: std.mem.Allocator) !ft.Face {
     const full_path = try std.fmt.allocPrintZ(allocator, "{s}/{s}", .{ exe_path, relative_path });
-    defer allocator.free(full_path);
-    return ttf.TTF_OpenFont(full_path, 100) orelse sdl.errors.Error.SdlError;
+    return text_renderer.library.face(full_path, 64);
 }
 
-pub fn createTextureFromText(font: *ttf.TTF_Font, text: []const u8, color: sdl.pixels.Color, renderer: sdl.render.Renderer) !sdl.render.Texture {
-    const surf = ttf.TTF_RenderText_Solid(font, @ptrCast(text), text.len, @bitCast(color));
-    const surface: sdl.surface.Surface = .{ .value = @as(?*sdl.c.struct_SDL_Surface, @ptrCast(surf)) orelse return sdl.errors.Error.SdlError };
-    defer surface.deinit();
-    return renderer.createTextureFromSurface(surface);
+pub fn createTextureFromText(font: ft.Face, text: []const u8, color: sdl.pixels.Color, renderer: sdl.render.Renderer) !sdl.render.Texture {
+    return text_renderer.createTextTexture(renderer, font, text, color);
 }
 
 pub fn centrelizedRect(rect_type: type, rect: sdl.rect.Rect(rect_type), size: sdl.rect.Point(rect_type)) @TypeOf(rect) {
