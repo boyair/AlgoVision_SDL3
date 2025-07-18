@@ -59,14 +59,6 @@ pub fn build(b: *std.Build) void {
     });
     //exe_mod.addImport("sdl3", sdl_mod);
 
-    // currently calling SDL_CreateTextureFromSurface
-    // on a surface that was created by calling TTF_RenderText_Solid
-    // causes a weird runtime error i couldn't figure resolve.
-    // for some odd reason, linking this dependency fixes the issue.
-    // temporeraly using it until the issue gets fixed because this repo seems to be unmaintained.
-
-    //exe_mod.linkLibrary(sdl_ttf_lib);
-
     // Modules can depend on one another using the `std.Build.Module.addImport` function.
     // This is what allows Zig source code to use `@import("foo")` where 'foo' is not a
     // file path. In this case, we set up `exe_mod` to import `lib_mod`.
@@ -95,8 +87,7 @@ pub fn build(b: *std.Build) void {
         // .use_llvm = false,
     });
 
-    exe.linkSystemLibrary("SDL3_ttf");
-    exe.linkSystemLibrary("SDL3_mixer");
+    //exe.linkSystemLibrary("SDL3_mixer");
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
@@ -145,7 +136,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/test.zig"),
     });
     exe_unit_tests.root_module.addImport("sdl3", sdl_mod);
-    exe_unit_tests.linkSystemLibrary("SDL3_ttf");
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 

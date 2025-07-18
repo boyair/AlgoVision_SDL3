@@ -34,6 +34,7 @@ pub fn interactiveElement(
                 .rect = rect,
             };
         }
+
         pub fn draw(self: *Self, view: ?View, renderer: sdl.render.Renderer) !void {
             if (@typeInfo(value_type) == .pointer and @typeInfo(value_type).pointer.size == .slice) {
                 if (!std.mem.eql(@typeInfo(value_type).pointer.child, self.value.*, self.cache) or self.texture == null) {
@@ -49,6 +50,7 @@ pub fn interactiveElement(
             const dst_rect = if (view) |v| v.convertRect(sdl.rect.FloatingType, self.rect) else self.rect;
             try renderer.renderTexture(self.texture orelse unreachable, null, dst_rect);
         }
+
         pub fn handleEvent(self: *Self, event: *const sdl.events.Event, mouse_pos: sdl.rect.FPoint, view: View) void {
             if (eventHandle) |handle| {
                 if (self.isHovered(mouse_pos, view)) {
@@ -62,16 +64,19 @@ pub fn interactiveElement(
                 }
             }
         }
+
         pub fn updateTexture(self: *Self, renderer: sdl.render.Renderer) !void {
             if (self.texture) |prev_tex| {
                 prev_tex.deinit();
             }
             self.texture = makeTexture(self.value.*, self.design, renderer);
         }
+
         pub fn isHovered(self: *const Self, mouse_pos: sdl.rect.FPoint, view: View) bool {
             const converted_mouse = view.revertPoint(sdl.rect.FloatingType, mouse_pos);
             return self.rect.asOtherRect(sdl.rect.FloatingType).pointIn(converted_mouse);
         }
+
         ///used to identify items generated from interactiveElement function
         pub fn getParams() struct { type, type, @TypeOf(makeTexture), @TypeOf(eventHandle) } {
             return .{
@@ -81,6 +86,7 @@ pub fn interactiveElement(
                 eventHandle,
             };
         }
+
         pub fn deinit(self: *Self) void {
             self.design.deinit();
             if (self.texture) |texture| {
@@ -88,6 +94,7 @@ pub fn interactiveElement(
             }
         }
     };
+
     return struct {
         value: *value_type, // pointer to entangled value.
         cache: value_type, // last value to prevent texture recreation.

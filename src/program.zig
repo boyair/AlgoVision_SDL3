@@ -53,7 +53,7 @@ playback_speed: f32 = 1.0,
 pause: bool = false,
 undo_btn_pressed: bool = false,
 freecam_text_data: []const u8 = "Freecam",
-freecam: bool = false,
+freecam: bool = true,
 fastforward_btn_pressed: bool = false,
 current_action: []const u8 = undefined,
 
@@ -231,6 +231,11 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
         }
         if (self.undo_btn_pressed) {
             self.op_manager.undoLast();
+        }
+        //click struct to print it (may need refining)
+        if (event.* == .mouse_button_down and event.mouse_button_down.button == .right) {
+            std.debug.print("right click!\n", .{});
+            self.heap.data.printBlockOnPoint(self.main_view.revertPoint(sdl.rect.FloatingType, mousepos));
         }
     }
 }

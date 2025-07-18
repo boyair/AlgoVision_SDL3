@@ -11,12 +11,12 @@ data: Internal,
 operations: *OperationManager,
 // data that updated on runtime (when code runs) to keep track and know upfront how to operate based on the past.
 existing_rects: std.hash_map.AutoHashMap(*anyopaque, sdl.rect.IRect),
-space_finder: SpaceFinder(sdl.rect.IntegerType, 2),
+space_finder: SpaceFinder(sdl.rect.IntegerType, 20),
 
 pub fn init(self: *Self, operations: *OperationManager, area: sdl.rect.IRect, allocator: std.mem.Allocator, renderer: sdl.render.Renderer, bg_texture_path: []const u8, block_texture_path: []const u8, font: ft.Face) !void {
     self.data = try Internal.init(allocator, renderer, area, bg_texture_path, block_texture_path, font);
     self.existing_rects = std.hash_map.AutoHashMap(*anyopaque, sdl.rect.IRect).init(allocator);
-    self.space_finder = SpaceFinder(sdl.rect.IntegerType, 2).init(allocator, 10, area) catch @panic("alloc error");
+    self.space_finder = @TypeOf(self.space_finder).init(allocator, 10, area) catch @panic("alloc error");
     errdefer self.data.deinit();
     self.operations = operations;
 }
@@ -24,6 +24,7 @@ pub fn init(self: *Self, operations: *OperationManager, area: sdl.rect.IRect, al
 pub fn deinit(self: *Self) void {
     self.data.deinit();
     self.existing_rects.deinit();
+    self.space_finder.deinit();
 }
 
 pub fn create(self: *Self, val: anytype, allocator: std.mem.Allocator) *@TypeOf(val) {

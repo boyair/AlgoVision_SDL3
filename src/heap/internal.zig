@@ -27,7 +27,7 @@ pub const Block = struct {
         const top_width = blk: {
             var top: usize = 0;
             for (fields.items) |field| {
-                top = @max(top, field.val.len);
+                top = @max(top, field.size);
             }
             break :blk top;
         };
@@ -52,14 +52,14 @@ pub const Block = struct {
             .pointer => |ptr| {
                 if (ptr.size == .slice) {
                     if (ptr.child == u8) {
-                        fields.append(Field.init(val, allocator) catch @panic("field init failure")) catch @panic("alloc error");
+                        fields.append(Field.init(val, allocator) catch @panic("field init failure"), null) catch @panic("alloc error");
                     } else {
                         for (val) |elm| {
                             appendFields(elm, fields, allocator);
                         }
                     }
                 } else if (ptr.size == .one) {
-                    const fld = Field.init(@intFromPtr(val), allocator) catch @panic("field init failure");
+                    const fld = Field.init(@as(*anyopaque, @ptrCast(val)), allocator, null) catch @panic("field init failure");
                     fields.append(fld) catch @panic("alloc error");
                 }
             },
@@ -67,11 +67,18 @@ pub const Block = struct {
                 if (val) |real| {
                     appendFields(real, fields, allocator);
                 } else {
-                    fields.append(Field.init(@as([]const u8, "null"), allocator) catch @panic("field init failure")) catch @panic("alloc error");
+                    fields.append(
+                        Field.init(
+                            @as([]const u8, "null"),
+                            allocator,
+                            @sizeOf(@typeInfo(@TypeOf(val)).optional.child),
+                        ) catch @panic("field init failure"),
+                    ) catch @panic("alloc error");
                 }
             },
-            else => { // Handles pointers and other simple types
-                fields.append(Field.init(val, allocator) catch @panic("field init failure")) catch @panic("alloc error");
+            else => {
+                // Handles other simple types
+                fields.append(Field.init(val, allocator, null) catch @panic("field init failure")) catch @panic("alloc error");
             },
         }
     }
@@ -88,25 +95,25 @@ pub const Block = struct {
 
     fn makeTexture(self: *Block, renderer: sdl.render.Renderer, bg_texture: sdl.render.Texture, scale: usize) !sdl.render.Texture {
         const texture = try renderer.createTexture(.packed_rgba_8_8_8_8, .target, @as(usize, @intCast(self.rect.w)) * scale, @as(usize, @intCast(self.rect.h)) * scale);
+
         const last_target = renderer.getTarget();
         defer renderer.setTarget(last_target) catch {
             @panic("failed to restore renderer target");
         };
         try renderer.setTarget(texture);
 
-        //       Draw background texture tiled
-
-        //     Draw each field's text
         for (self.fields.items, 0..) |field, i| {
-            const text_texture = try helpers.createTextureFromText(self.design.font, field.val, self.design.text_color, renderer);
-            defer text_texture.deinit();
+            const field_texture = try field.MakeTexture(renderer, scale, self.design.font, self.design.text_color, bg_texture);
+            defer field_texture.deinit();
 
-            for (0..@max(field.val.len, field.size)) |width| {
-                try renderer.renderTexture(bg_texture, null, (sdl.rect.Rect(usize){ .x = width * scale, .y = i * scale, .w = scale, .h = scale }).asOtherRect(sdl.rect.FloatingType));
-            }
-            const text_rect =
-                sdl.rect.FRect{ .x = 0, .y = @as(f32, @floatFromInt(i * scale)), .w = @as(f32, @floatFromInt(field.val.len * scale)), .h = @as(f32, @floatFromInt(scale)) };
-            try renderer.renderTexture(text_texture, null, text_rect);
+            const field_rect =
+                sdl.rect.Rect(usize){
+                    .x = 0,
+                    .y = i * scale,
+                    .w = field.size * scale,
+                    .h = scale,
+                };
+            try renderer.renderTexture(field_texture, null, field_rect.asOtherRect(sdl.rect.FloatingType));
         }
 
         return texture;
@@ -187,6 +194,30 @@ pub fn override(self: *Self, ptr: *anyopaque, block: Block) void {
     block_ptr.* = block;
 }
 
+fn convertPoint(self: *Self, point: sdl.rect.FPoint) sdl.rect.IPoint {
+    const as_ipoint = point.asOtherPoint(sdl.rect.IntegerType);
+    const converted = sdl.rect.IPoint{
+        .x = @divTrunc((as_ipoint.x - self.area.x), @as(sdl.rect.IntegerType, @intCast(self.draw_scale))) + 2, //for some reason there is an offset of 2.
+        .y = @divTrunc((as_ipoint.y - self.area.y), @as(sdl.rect.IntegerType, @intCast(self.draw_scale))),
+    };
+    return converted;
+}
+
+pub fn printBlockOnPoint(self: *Self, point: sdl.rect.FPoint) void {
+    var it = self.blocks.iterator();
+    const converted = self.convertPoint(point);
+    std.debug.print("converted: {d}, {d}\n\n", .{ converted.x, converted.y });
+    while (it.next()) |entry| {
+        if (entry.value_ptr.rect.pointIn(converted.asOtherPoint(sdl.rect.IntegerType))) {
+            std.debug.print("rect: {d},{d},{d},{d}\n", .{ entry.value_ptr.rect.x, entry.value_ptr.rect.y, entry.value_ptr.rect.w, entry.value_ptr.rect.h });
+            for (entry.value_ptr.fields.items) |*field| {
+                std.debug.print("{s}\n", .{field.val});
+            }
+            std.debug.print("\n", .{});
+        }
+    }
+}
+
 pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, area: sdl.rect.IRect, bg_texture_path: []const u8, block_texture_path: []const u8, font: ft.Face) !Self {
     return Self{
         .blocks = std.hash_map.AutoHashMap(*anyopaque, Block).init(allocator),
@@ -227,16 +258,17 @@ pub fn draw(self: *Self, renderer: sdl.render.Renderer, view: ?View) !void {
 const Field = struct {
     size: usize,
     val: []u8,
-    ptr: ?*anyopaque,
-    pub fn init(val: anytype, allocator: std.mem.Allocator) !Field {
-        const val_size = @sizeOf(@TypeOf(val));
+    ptr: ?*anyopaque, // ptrs needs to be reserved because they are transformed to coordinates later on.
+
+    pub fn init(val: anytype, allocator: std.mem.Allocator, comptime size_override: ?usize) !Field {
+        const val_size = size_override orelse @sizeOf(@TypeOf(val));
         // std.debug.print("val size: {d}\n", .{val_size});
         const size_str = std.fmt.comptimePrint("{d}", .{val_size});
         const fmt = switch (@TypeOf(val)) {
             u8 => "{c}",
             []u8 => "{s}",
             []const u8 => "{s}",
-            *anyopaque => "PPP{x}",
+            *anyopaque => "{x}",
             else => "{: ^" ++ size_str ++ "}",
         };
 
@@ -248,11 +280,48 @@ const Field = struct {
             .ptr = if (@TypeOf(val) == *anyopaque) val else null,
         };
     }
+    pub fn MakeTexture(self: *const Field, renderer: sdl.render.Renderer, scale: usize, font: ft.Face, text_color: sdl.pixels.Color, bg: sdl.render.Texture) !sdl.render.Texture {
+        const texture = try renderer.createTexture(.packed_rgba_8_8_8_8, .target, @as(usize, @intCast(self.size)) * scale, scale);
+
+        const last_target = renderer.getTarget();
+        defer renderer.setTarget(last_target) catch {
+            @panic("failed to restore renderer target");
+        };
+        try renderer.setTarget(texture);
+
+        for (0..self.size) |i| {
+            const rect = sdl.rect.FRect{
+                .x = @as(f32, @floatFromInt(i * scale)),
+                .y = 0,
+                .w = @as(f32, @floatFromInt(scale)),
+                .h = @as(f32, @floatFromInt(scale)),
+            };
+            try renderer.renderTexture(bg, null, rect);
+        }
+
+        const final_length = @min(self.val.len, self.size);
+        const starting_point = if (final_length < self.size) (self.size - final_length) / 2 else 0;
+        const text_texture = try helpers.createTextureFromText(font, self.val[0..final_length], text_color, renderer);
+
+        try renderer.renderTexture(
+            text_texture,
+            null,
+            .{
+                .x = @floatFromInt(scale * starting_point),
+                .y = 0,
+                .w = @floatFromInt(scale * final_length),
+                .h = @floatFromInt(scale),
+            },
+        );
+
+        return texture;
+    }
+
     fn pointerToPos(self: *Field, blocks: std.hash_map.AutoHashMap(*anyopaque, Block), allocator: std.mem.Allocator) void {
         const ptr = self.ptr orelse return;
         allocator.free(self.val);
         const coords: sdl.rect.IPoint = if (blocks.get(ptr)) |blk| .{ .x = blk.rect.x, .y = blk.rect.y } else .{ .x = 0, .y = 0 };
-        self.val = std.fmt.allocPrint(allocator, "{d} , {d}", coords) catch @panic("alloc error");
+        self.val = std.fmt.allocPrint(allocator, "{d}|{d}", coords) catch @panic("alloc error");
     }
 };
 

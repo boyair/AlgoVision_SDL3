@@ -2,7 +2,6 @@ const std = @import("std");
 const sdl = @import("sdl3");
 const ft = @import("freetype");
 const TextRenderer = @import("textrenderer.zig");
-const mixer = @cImport(@cInclude("SDL3_mixer/SDL_mixer.h"));
 var exe_path: []const u8 = undefined;
 var text_renderer: TextRenderer = undefined;
 ///the use of c Libs for const ft = @import("freetype"); and mixer
@@ -23,8 +22,6 @@ pub fn initSDL(allocator: std.mem.Allocator) !struct { sdl.video.Window, sdl.ren
         .audio = true,
     });
     text_renderer = try TextRenderer.init(allocator);
-    //_ = mixer.Mix_Init(mixer.MIX_INIT_WAVPACK);
-    //try checkError(mixer.Mix_OpenAudio(0x8010, 44100));
     const window = try sdl.video.Window.init(
         "my window",
         1920,
@@ -42,8 +39,6 @@ pub fn deinitSDL(window: sdl.video.Window, renderer: sdl.render.Renderer, alloca
     renderer.deinit();
     text_renderer.deinit();
     window.deinit();
-    mixer.Mix_CloseAudio();
-    mixer.Mix_Quit();
     sdl.init.quit(.{ .video = true, .audio = true });
 }
 
@@ -67,14 +62,9 @@ pub fn cloneTexture(texture: sdl.render.Texture, renderer: sdl.render.Renderer) 
     return clone;
 }
 
-pub fn loadWav(relative_path: []const u8, allocator: std.mem.Allocator) ![*c]mixer.Mix_Chunk {
-    const full_path = try std.fmt.allocPrintZ("{s}/{s}", .{ exe_path, relative_path });
-    defer allocator.free(full_path);
-    return mixer.Mix_LoadWAV(full_path);
-}
-
 pub fn loadFont(relative_path: []const u8, allocator: std.mem.Allocator) !ft.Face {
-    const full_path = try std.fmt.allocPrintZ(allocator, "{s}/{s}", .{ exe_path, relative_path });
+    const full_path = try std.fs.path.join(allocator, &.{ exe_path, relative_path });
+    defer allocator.free(full_path);
     return text_renderer.library.face(full_path, 64);
 }
 
@@ -112,11 +102,3 @@ pub inline fn functionFormat(name: []const u8, args: anytype) []const u8 {
         return fmt;
     }
 }
-
-// pub inline fn pointerFields(T: type) [][]const u8 {
-// var fields: [][]const u8 = switch (@typeInfo(T)) {
-// .
-//
-// }
-//
-// }
