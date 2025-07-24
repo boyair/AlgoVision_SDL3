@@ -3,3 +3,6 @@ zig-out/
 zig_sdl3/
 .zed/
 todo.mdtodo.txt
+
+# Zed editor settings
+.zed/
