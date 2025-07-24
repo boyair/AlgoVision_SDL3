@@ -42,20 +42,15 @@ pub fn create(self: *Self, val: anytype, allocator: std.mem.Allocator) *@TypeOf(
 
     self.existing_rects.put(@ptrCast(mem), block.rect) catch @panic("alloc error");
 
-    self.operations.append(.{
-        .action = .{
+    self.operations.append(
+        .{
             .create = .{
                 .heap = &self.data,
                 .block = block,
                 .ptr = @ptrCast(mem),
             },
         },
-        .camera_motion = .{
-            .start = .{ .x = 0, .y = 0, .w = 1920, .h = 1080 },
-            .end = Internal.scaleRect(gappedRect(block.rect, 1), self.data.draw_scale).asOtherRect(sdl.rect.FloatingType),
-            .duration = 3_000_000_000,
-        },
-    });
+    );
     return mem;
 }
 pub fn alloc(self: *Self, comptime T: type, size: usize, allocator: std.mem.Allocator) []T {
@@ -78,20 +73,15 @@ pub fn alloc(self: *Self, comptime T: type, size: usize, allocator: std.mem.Allo
 
     self.existing_rects.put(@ptrCast(mem.ptr), block.rect) catch @panic("alloc error");
 
-    self.operations.append(.{
-        .action = .{
+    self.operations.append(
+        .{
             .create = .{
                 .heap = &self.data,
                 .block = block,
                 .ptr = @ptrCast(mem),
             },
         },
-        .camera_motion = .{
-            .start = .{ .x = 0, .y = 0, .w = 1920, .h = 1080 },
-            .end = Internal.scaleRect(gappedRect(block.rect, 1), self.data.draw_scale).asOtherRect(sdl.rect.FloatingType),
-            .duration = 3_000_000_000,
-        },
-    });
+    );
     return mem;
 }
 
@@ -100,19 +90,14 @@ pub fn destroy(self: *Self, ptr: anytype, allocator: std.mem.Allocator) void {
     const real_ptr = if (is_slice) ptr.ptr else ptr;
     const block_rect = self.existing_rects.get(@ptrCast(real_ptr)) orelse @panic("tried to destroy non alocated memory");
 
-    self.operations.append(.{
-        .action = .{
+    self.operations.append(
+        .{
             .destroy = .{
                 .heap = &self.data,
                 .ptr = @ptrCast(real_ptr),
             },
         },
-        .camera_motion = .{
-            .start = .{ .x = 0, .y = 0, .w = 1920, .h = 1080 },
-            .end = Internal.scaleRect(gappedRect(block_rect, 1), self.data.draw_scale).asOtherRect(sdl.rect.FloatingType),
-            .duration = 3_000_000_000,
-        },
-    });
+    );
     _ = self.existing_rects.remove(real_ptr);
     self.space_finder.remove(block_rect);
     if (is_slice) {
@@ -129,20 +114,15 @@ pub fn update(self: *Self, ptr: anytype) void {
     const block =
         Internal.Block.init(ptr.*, .{ .font = self.data.default_font, .text_color = .{ .r = 255, .g = 0, .b = 0, .a = 255 } }, self.operations.allocator, .{ .x = existing_rect.x, .y = existing_rect.y });
     existing_rect.* = block.rect;
-    self.operations.append(.{
-        .action = .{
+    self.operations.append(
+        .{
             .override = .{
                 .heap = &self.data,
                 .block = block,
                 .ptr = @ptrCast(real_ptr),
             },
         },
-        .camera_motion = .{
-            .start = .{ .x = 0, .y = 0, .w = 1920, .h = 1080 },
-            .end = Internal.scaleRect(gappedRect(block.rect, 1), self.data.draw_scale).asOtherRect(sdl.rect.FloatingType),
-            .duration = 3_000_000_000,
-        },
-    });
+    );
 }
 
 fn gappedRect(rect: sdl.rect.IRect, gap: sdl.rect.IntegerType) sdl.rect.IRect {
@@ -182,11 +162,9 @@ fn calculateNewPos(self: *const Self, size: sdl.rect.IPoint) sdl.rect.IPoint {
         Xrects.append(.{ .rect = gapped_rect, .visited = false }) catch @panic("alloc error");
     }
     std.sort.insertion(RectInfo, Xrects.items, {}, RectInfo.islessthanX);
-    //std.debug.print("lists: {d}\n", .{timer.lap()});
     const current: sdl.rect.IRect = .{ .x = self.data.area.x, .y = self.data.area.y, .w = size.x, .h = size.y };
     const ret = findEmptySpace(current, current, Xrects);
 
-    //std.debug.print("find: {d}\n", .{timer.lap()});
     return .{ .x = ret.x, .y = ret.y };
 }
 

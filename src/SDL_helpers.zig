@@ -102,3 +102,18 @@ pub inline fn functionFormat(name: []const u8, args: anytype) []const u8 {
         return fmt;
     }
 }
+
+pub fn calculateDistance(point_type: type, p1: sdl.rect.Point(point_type), p2: sdl.rect.Point(point_type)) point_type {
+    const xdiff = @max(p1.x, p2.x) - @min(p1.x, p2.x); // using max - min to prevent issues with unsigned types and negative numbers
+    const ydiff = @max(p1.y, p2.y) - @min(p1.y, p2.y); // using max - min to prevent issues with unsigned types and negative numbers
+    return std.math.sqrt(xdiff * xdiff + ydiff * ydiff);
+}
+///returns a rectangle that is bigger than the given one by the gap size
+pub fn gappedRect(rect_type: type, rect: sdl.rect.Rect(rect_type), gap: rect_type) sdl.rect.Rect(rect_type) {
+    return .{
+        .x = rect.x - gap,
+        .y = rect.y - gap,
+        .w = rect.w + gap * 2,
+        .h = rect.h + gap * 2,
+    };
+}

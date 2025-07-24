@@ -1,8 +1,13 @@
 const std = @import("std");
-const sdl = @import("sdl3");
 const ft = @import("freetype");
-const View = @import("../view.zig");
+const sdl = @import("sdl3");
+
 const helpers = @import("../SDL_helpers.zig");
+const View = @import("../view.zig");
+
+//
+// new block -> internal.
+// update ->
 const Self = @This();
 blocks: std.hash_map.AutoHashMap(*anyopaque, Block),
 byte_bg: sdl.render.Texture,
@@ -21,6 +26,12 @@ pub const Block = struct {
     texture_cache: ?sdl.render.Texture,
     design: Design,
 
+    ///initiallize a block by giving it a struct
+    /// parameters:
+    /// val - the value from which the block is created
+    /// design - visual properties
+    /// allocator - allocator used to allocate fields
+    /// pos - initial position of block
     pub fn init(val: anytype, design: Design, allocator: std.mem.Allocator, pos: sdl.rect.IPoint) Block {
         var fields = std.ArrayList(Field).init(allocator);
         appendFields(val, &fields, allocator);
@@ -41,7 +52,7 @@ pub const Block = struct {
     }
 
     //A function used to append all the fields.
-    //This function uses recursion and therefor may not be embeded in the init function.
+    //This function uses recursion and therefor cannot be embeded in the init function.
     fn appendFields(val: anytype, fields: *std.ArrayList(Field), allocator: std.mem.Allocator) void {
         switch (@typeInfo(@TypeOf(val))) {
             .@"struct" => {
@@ -206,14 +217,11 @@ fn convertPoint(self: *Self, point: sdl.rect.FPoint) sdl.rect.IPoint {
 pub fn printBlockOnPoint(self: *Self, point: sdl.rect.FPoint) void {
     var it = self.blocks.iterator();
     const converted = self.convertPoint(point);
-    std.debug.print("converted: {d}, {d}\n\n", .{ converted.x, converted.y });
     while (it.next()) |entry| {
         if (entry.value_ptr.rect.pointIn(converted.asOtherPoint(sdl.rect.IntegerType))) {
-            std.debug.print("rect: {d},{d},{d},{d}\n", .{ entry.value_ptr.rect.x, entry.value_ptr.rect.y, entry.value_ptr.rect.w, entry.value_ptr.rect.h });
             for (entry.value_ptr.fields.items) |*field| {
                 std.debug.print("{s}\n", .{field.val});
             }
-            std.debug.print("\n", .{});
         }
     }
 }
@@ -262,7 +270,6 @@ const Field = struct {
 
     pub fn init(val: anytype, allocator: std.mem.Allocator, comptime size_override: ?usize) !Field {
         const val_size = size_override orelse @sizeOf(@TypeOf(val));
-        // std.debug.print("val size: {d}\n", .{val_size});
         const size_str = std.fmt.comptimePrint("{d}", .{val_size});
         const fmt = switch (@TypeOf(val)) {
             u8 => "{c}",
@@ -273,7 +280,6 @@ const Field = struct {
         };
 
         const formatted_val = try std.fmt.allocPrint(allocator, fmt, .{val});
-        // std.debug.print("{s}", .{formatted_val});
         return Field{
             .size = val_size,
             .val = formatted_val,

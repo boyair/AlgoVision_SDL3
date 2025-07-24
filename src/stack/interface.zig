@@ -16,23 +16,31 @@ pub fn call(self: *Self, function: anytype, args: anytype, comptime name: ?[]con
     const fmt = helpers.functionFormat(name orelse "fn", args);
     var predicted_place = self.data.base_rect;
     predicted_place.y -= predicted_place.h * @as(sdl.rect.FloatingType, @floatFromInt(self.stack_height));
-    const motion = Camera.init(
-        3_000_000_000,
-        .{ .x = 0, .y = 0, .w = 1920, .h = 1080 },
-        predicted_place,
-    );
     self.operations.append(
         .{
-            .action = .{ .call = .{ .stack = &self.data, .new_text = std.fmt.allocPrint(allocator, fmt, args) catch @panic("alloc error") } },
-            .camera_motion = motion,
+            .call = .{
+                .stack = &self.data,
+                .new_text = std.fmt.allocPrint(allocator, fmt, args) catch @panic("alloc error"),
+            },
         },
     );
     self.stack_height += 1;
     const ret = @call(.auto, function, args);
     self.stack_height -= 1;
     const ret_str = std.fmt.allocPrint(allocator, "{}", .{ret}) catch unreachable;
-    self.operations.append(.{ .action = .{ .eval = .{ .stack = &self.data, .new_text = ret_str } }, .camera_motion = motion });
-    self.operations.append(.{ .action = .{ .pop = &self.data }, .camera_motion = motion });
+    self.operations.append(
+        .{
+            .eval = .{
+                .stack = &self.data,
+                .new_text = ret_str,
+            },
+        },
+    );
+    self.operations.append(
+        .{
+            .pop = &self.data,
+        },
+    );
 
     return ret;
 }

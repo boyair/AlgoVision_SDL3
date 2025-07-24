@@ -38,7 +38,12 @@ pub const Action = union(enum) {
 
             .create => |data| {
                 data.heap.push(data.ptr, data.block.deepCopy(data.heap.allocator)) catch unreachable;
-                if (!is_undo) return .{ .destroy = .{ .heap = data.heap, .ptr = data.ptr } };
+                if (!is_undo) return .{
+                    .destroy = .{
+                        .heap = data.heap,
+                        .ptr = data.ptr,
+                    },
+                };
             },
 
             .destroy => |data| {
@@ -63,6 +68,33 @@ pub const Action = union(enum) {
         }
     }
 
+    ///returns the rectangle related to the action
+    pub fn getRect(self: Action) sdl.rect.FRect {
+        // _ = self;
+        // return .{ .x = 0, .y = 0, .w = 1920, .h = 1080 };
+        switch (self) {
+            .call => |data| {
+                var ret = data.stack.topRect();
+                ret.y += data.stack.base_rect.h;
+                return ret;
+            },
+            .pop => |data| {
+                return data.topRect();
+            },
+            .eval => |data| {
+                return data.stack.topRect();
+            },
+            .create => |data| {
+                return heap.scaleRect(data.block.rect, data.heap.draw_scale).asOtherRect(sdl.rect.FloatingType);
+            },
+            .destroy => |data| {
+                return heap.scaleRect(data.heap.blocks.get(data.ptr).?.rect, data.heap.draw_scale).asOtherRect(sdl.rect.FloatingType);
+            },
+            .override => |data| {
+                return heap.scaleRect(data.heap.blocks.get(data.ptr).?.rect, data.heap.draw_scale).asOtherRect(sdl.rect.FloatingType);
+            },
+        }
+    }
     pub fn deinit(action: Action, allocator: std.mem.Allocator) void {
         switch (action) {
             .call => |data| {

@@ -11,7 +11,8 @@ renderer: sdl.render.Renderer,
 default_font: ft.Face,
 allocator: std.mem.Allocator,
 base_rect: sdl.rect.FRect,
-top: usize = 0,
+/// current stack height
+height: usize = 0,
 
 pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, rect: sdl.rect.FRect, block_texture_path: []const u8, font: ft.Face) !Self {
     return Self{
@@ -38,7 +39,7 @@ pub fn draw(self: *Self, renderer: sdl.render.Renderer, view: ?View) !void {
     var cur_rect = self.base_rect;
 
     for (self.stack_frame.items, 0..) |*block, idx| {
-        if (idx >= self.top) break;
+        if (idx >= self.height) break;
         try block.draw(
             renderer,
             if (view) |v| v.convertRect(sdl.rect.FloatingType, cur_rect) else cur_rect,
@@ -57,7 +58,7 @@ pub fn push(self: *Self, text: []const u8) !void {
         },
         self.allocator,
     ));
-    self.top += 1;
+    self.height += 1;
 }
 
 ///returns reference to top block
@@ -133,3 +134,13 @@ pub const Design = struct {
     text_color: sdl.pixels.Color,
     text_limit: ?usize = 15, //limits the text length when making texture
 };
+
+pub fn topRect(self: *const Self) sdl.rect.FRect {
+    if (self.stack_frame.items.len == 0) return self.base_rect;
+    return sdl.rect.FRect{
+        .x = self.base_rect.x,
+        .y = self.base_rect.y - @as(f32, @floatFromInt(self.height)) * self.base_rect.h,
+        .w = self.base_rect.w,
+        .h = self.base_rect.h,
+    };
+}

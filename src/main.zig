@@ -1,5 +1,7 @@
 const std = @import("std");
+
 const sdl = @import("sdl3");
+
 const Program = @import("program.zig");
 const Stack = @import("stack/internal.zig");
 
@@ -37,6 +39,7 @@ pub fn main() !void {
         program.heap.update(list.first.?);
     }
 
+    std.debug.print("hello world!!", .{});
     std.debug.print("total: {d}\n", .{timer.read()});
     while (list.popFirst()) |first| {
         program.heap.destroy(first, gpa.allocator());

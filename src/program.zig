@@ -6,7 +6,7 @@ const Helpers = @import("SDL_helpers.zig");
 const OperationManager = @import("action/operation_manager.zig");
 const UI = @import("ui/UI.zig");
 pub const Stack = @import("stack/interface.zig");
-const Camera = @import("camera_motion.zig");
+const Camera = @import("camera_motion.zig").Motion(f64);
 pub const Heap = @import("heap/interface.zig");
 const main = @import("main.zig");
 const main_bg = main.main_bg;
@@ -53,7 +53,7 @@ playback_speed: f32 = 1.0,
 pause: bool = false,
 undo_btn_pressed: bool = false,
 freecam_text_data: []const u8 = "Freecam",
-freecam: bool = true,
+freecam: bool = false,
 fastforward_btn_pressed: bool = false,
 current_action: []const u8 = undefined,
 
@@ -124,25 +124,19 @@ pub fn init(allocator: std.mem.Allocator) !*Self {
         .operations = &ret.op_manager,
     };
     try ret.heap.init(&ret.op_manager, .{ .x = 100, .y = 0, .w = 512, .h = 512 }, ret.allocator, renderer, "assets/heap.png", "assets/cloud.png", stack_font);
-    //   ret.callMain();
+    ret.callMain();
     return ret;
 }
 
 fn callMain(self: *Self) void {
-    const motion = Camera.init(
-        3_000_000_000,
-        .{ .x = 0, .y = 0, .w = 1920, .h = 1080 },
-        self.stack.data.base_rect,
-    );
-    self.op_manager.append(.{
-        .action = .{
+    self.op_manager.append(
+        .{
             .call = .{
                 .stack = &self.stack.data,
                 .new_text = self.op_manager.allocator.dupe(u8, "main()") catch unreachable,
             },
         },
-        .camera_motion = motion,
-    });
+    );
     self.stack.stack_height += 1;
 }
 
@@ -190,10 +184,10 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
             },
             else => {},
             .left => {
-                self.op_manager.undoLast();
+                self.op_manager.undoLast(&self.main_view);
             },
             .right => {
-                self.op_manager.fastForward();
+                self.op_manager.fastForward(&self.main_view);
             },
             .space => {
                 self.pause = !self.pause;
@@ -227,10 +221,10 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
             @field(self, elm).handleEvent(event, mousepos, self.ui_view);
         }
         if (self.fastforward_btn_pressed) {
-            self.op_manager.fastForward();
+            self.op_manager.fastForward(&self.main_view);
         }
         if (self.undo_btn_pressed) {
-            self.op_manager.undoLast();
+            self.op_manager.undoLast(&self.main_view);
         }
         //click struct to print it (may need refining)
         if (event.* == .mouse_button_down and event.mouse_button_down.button == .right) {
