@@ -21,10 +21,11 @@ bg_texture: ?sdl.render.Texture,
 
 pub const Block = struct {
     rect: sdl.rect.IRect,
-    fields: std.ArrayList(Field),
+    fields: std.ArrayList(Field) = .{},
     updated: bool = false,
     texture_cache: ?sdl.render.Texture,
     design: Design,
+    allocator: std.mem.Allocator,
 
     ///initiallize a block by giving it a struct
     /// parameters:
@@ -33,7 +34,7 @@ pub const Block = struct {
     /// allocator - allocator used to allocate fields
     /// pos - initial position of block
     pub fn init(val: anytype, design: Design, allocator: std.mem.Allocator, pos: sdl.rect.IPoint) Block {
-        var fields = std.ArrayList(Field).init(allocator);
+        var fields = std.ArrayList(Field){};
         appendFields(val, &fields, allocator);
         const top_width = blk: {
             var top: usize = 0;
@@ -48,11 +49,12 @@ pub const Block = struct {
             .fields = fields,
             .texture_cache = null,
             .design = design,
+            .allocator = allocator,
         };
     }
 
-    //A function used to append all the fields.
-    //This function uses recursion and therefor cannot be embeded in the init function.
+    //A function is used to append all the fields.
+    //This function uses recursion therefor cannot be embeded in the init function.
     fn appendFields(val: anytype, fields: *std.ArrayList(Field), allocator: std.mem.Allocator) void {
         switch (@typeInfo(@TypeOf(val))) {
             .@"struct" => {
@@ -63,7 +65,7 @@ pub const Block = struct {
             .pointer => |ptr| {
                 if (ptr.size == .slice) {
                     if (ptr.child == u8) {
-                        fields.append(Field.init(val, allocator) catch @panic("field init failure"), null) catch @panic("alloc error");
+                        fields.append(allocator, Field.init(val, allocator) catch @panic("field init failure"), null) catch @panic("alloc error");
                     } else {
                         for (val) |elm| {
                             appendFields(elm, fields, allocator);
@@ -71,7 +73,7 @@ pub const Block = struct {
                     }
                 } else if (ptr.size == .one) {
                     const fld = Field.init(@as(*anyopaque, @ptrCast(val)), allocator, null) catch @panic("field init failure");
-                    fields.append(fld) catch @panic("alloc error");
+                    fields.append(allocator, fld) catch @panic("alloc error");
                 }
             },
             .optional => {
@@ -79,6 +81,7 @@ pub const Block = struct {
                     appendFields(real, fields, allocator);
                 } else {
                     fields.append(
+                        allocator,
                         Field.init(
                             @as([]const u8, "null"),
                             allocator,
@@ -105,8 +108,7 @@ pub const Block = struct {
     }
 
     fn makeTexture(self: *Block, renderer: sdl.render.Renderer, bg_texture: sdl.render.Texture, scale: usize) !sdl.render.Texture {
-        const texture = try renderer.createTexture(.packed_rgba_8_8_8_8, .target, @as(usize, @intCast(self.rect.w)) * scale, @as(usize, @intCast(self.rect.h)) * scale);
-
+        const texture = try sdl.render.Texture.init(renderer, .packed_rgba_8_8_8_8, .target, @as(usize, @intCast(self.rect.w)) * scale, @as(usize, @intCast(self.rect.h)) * scale);
         const last_target = renderer.getTarget();
         defer renderer.setTarget(last_target) catch {
             @panic("failed to restore renderer target");
@@ -130,12 +132,12 @@ pub const Block = struct {
         return texture;
     }
 
-    pub fn deinit(self: *const Block, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *Block) void {
         if (self.texture_cache) |texture| texture.deinit();
         for (self.fields.items) |field| {
-            allocator.free(field.val);
+            self.allocator.free(field.val);
         }
-        self.fields.deinit();
+        self.fields.clearAndFree(self.allocator);
     }
 
     pub fn deepCopy(self: *const Block, allocator: std.mem.Allocator) Block {
@@ -150,6 +152,7 @@ pub const Block = struct {
             .fields = new_fields,
             .texture_cache = null,
             .design = self.design,
+            .allocator = self.allocator,
         };
     }
 };
@@ -189,8 +192,8 @@ pub fn create(self: *Self, val: anytype, position: sdl.rect.IRect) void {
 }
 
 pub fn destroy(self: *Self, ptr: *anyopaque) void {
-    if (self.blocks.get(ptr)) |*block| {
-        block.deinit(self.allocator);
+    if (self.blocks.getPtr(ptr)) |block| {
+        block.deinit();
         if (self.blocks.remove(ptr) == false)
             @panic("tried to destroy non allocated memory");
     } else @panic("tried to destoy non existing memory");
@@ -201,7 +204,7 @@ pub fn override(self: *Self, ptr: *anyopaque, block: Block) void {
     for (block.fields.items) |*field| {
         field.pointerToPos(self.blocks, self.allocator);
     }
-    block_ptr.deinit(self.allocator);
+    block_ptr.deinit();
     block_ptr.* = block;
 }
 
@@ -245,7 +248,7 @@ pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, area: s
 pub fn deinit(self: *Self) void {
     var it = self.blocks.iterator();
     while (it.next()) |entry| {
-        entry.value_ptr.deinit(self.allocator);
+        entry.value_ptr.deinit();
     }
     self.blocks.deinit();
     self.byte_bg.deinit();
@@ -275,7 +278,7 @@ const Field = struct {
             u8 => "{c}",
             []u8 => "{s}",
             []const u8 => "{s}",
-            *anyopaque => "{x}",
+            *anyopaque => "{any}",
             else => "{: ^" ++ size_str ++ "}",
         };
 
@@ -287,7 +290,7 @@ const Field = struct {
         };
     }
     pub fn MakeTexture(self: *const Field, renderer: sdl.render.Renderer, scale: usize, font: ft.Face, text_color: sdl.pixels.Color, bg: sdl.render.Texture) !sdl.render.Texture {
-        const texture = try renderer.createTexture(.packed_rgba_8_8_8_8, .target, @as(usize, @intCast(self.size)) * scale, scale);
+        const texture = try sdl.render.Texture.init(renderer, .packed_rgba_8_8_8_8, .target, @as(usize, @intCast(self.size)) * scale, scale);
 
         const last_target = renderer.getTarget();
         defer renderer.setTarget(last_target) catch {

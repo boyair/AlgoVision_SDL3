@@ -102,7 +102,7 @@ pub fn init(allocator: std.mem.Allocator) !*Self {
         .stack = undefined,
         .heap = undefined,
         .current_action = "Test",
-        .ui_texture = try renderer.createTexture(.packed_rgba_8_8_8_8, .target, 1000, 1000),
+        .ui_texture = try sdl.render.Texture.init(renderer, .packed_rgba_8_8_8_8, .target, 1000, 1000),
         .ui_bg = try Helpers.loadImage(renderer, "assets/ui/menu.png", allocator),
         //TODO: make actual textures for those buttons
         .fastforward_btn = UI.Button.init(&ret.fastforward_btn_pressed, .{ .x = 800, .y = 100, .w = 150, .h = 100 }, .{ .texture = try Helpers.createTextureFromText(stack_font, ">", .{ .r = 255, .g = 255, .b = 255, .a = 255 }, renderer) }),
@@ -164,7 +164,7 @@ pub fn start(self: *Self) void {
         );
         const passed = timer.read();
         if (passed < 4_000_000)
-            std.time.sleep(4_000_000 - passed);
+            sdl.timer.delayNanoseconds(4_000_000 - passed);
         lap_time = timer.lap();
     }
 }

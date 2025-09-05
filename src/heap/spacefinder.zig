@@ -25,16 +25,18 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
 
         area: TYPE,
         existing_rects: std.ArrayList(RectInfo),
+        allocator: std.mem.Allocator,
 
         pub fn init(allocator: std.mem.Allocator, initial_capacity: usize, area: TYPE) !Self {
             return Self{
                 .area = area,
                 .existing_rects = try std.ArrayList(RectInfo).initCapacity(allocator, initial_capacity),
+                .allocator = allocator,
             };
         }
 
         pub fn deinit(self: *Self) void {
-            self.existing_rects.deinit();
+            self.existing_rects.deinit(self.allocator);
         }
 
         ///appends to list and maintains order based on x dimension.
@@ -44,10 +46,10 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
 
             if (rects.capacity == rects.items.len) {
                 const new_cap: usize = @intFromFloat(@as(f32, @floatFromInt(rects.capacity)) * 1.5);
-                try rects.ensureTotalCapacity(new_cap);
+                try rects.ensureTotalCapacity(self.allocator, new_cap);
             }
             const gapped_rect = gappedRect(rect);
-            try rects.append(.{ .rect = gapped_rect, .visited = false });
+            try rects.append(self.allocator, .{ .rect = gapped_rect, .visited = false });
             std.sort.insertion(RectInfo, rects.items, {}, RectInfo.islessthanX);
         }
         pub fn getFreeSpace(self: *Self, size: sdl.rect.Point(rect_type)) TYPE {
@@ -140,7 +142,7 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
 
                     const res: directed_rects = .{
                         //the directions that decrease list should be first
-                        .right = if (blocked == .right) bad_rect else findEmptySpace(original, diffed.right, std.ArrayList(RectInfo).fromOwnedSlice(Xlist.allocator, Xlist.items[allowed_idx_right..]), .left),
+                        .right = if (blocked == .right) bad_rect else findEmptySpace(original, diffed.right, std.ArrayList(RectInfo).fromOwnedSlice(Xlist.items[allowed_idx_right..]), .left),
                         .down = if (blocked == .down) bad_rect else findEmptySpace(original, diffed.down, Xlist, blocked),
                         .up = if (blocked == .up) bad_rect else findEmptySpace(original, diffed.up, Xlist, blocked),
                         .left = if (blocked == .left) bad_rect else findEmptySpace(original, diffed.left, Xlist, .right),

@@ -16,7 +16,7 @@ height: usize = 0,
 
 pub fn init(allocator: std.mem.Allocator, renderer: sdl.render.Renderer, rect: sdl.rect.FRect, block_texture_path: []const u8, font: ft.Face) !Self {
     return Self{
-        .stack_frame = std.ArrayList(Block).init(allocator),
+        .stack_frame = std.ArrayList(Block).initCapacity(allocator, 0) catch unreachable,
         .renderer = renderer,
         .block_texture = helpers.loadImage(renderer, block_texture_path, allocator) catch {
             @panic("failed to load stack block texture");
@@ -30,7 +30,7 @@ pub fn deinit(self: *Self) void {
     for (self.stack_frame.items) |block| {
         block.deinit(self.allocator);
     }
-    self.stack_frame.deinit();
+    self.stack_frame.deinit(self.allocator);
     self.block_texture.deinit();
     self.default_font.deinit();
 }
@@ -50,7 +50,7 @@ pub fn draw(self: *Self, renderer: sdl.render.Renderer, view: ?View) !void {
 }
 
 pub fn push(self: *Self, text: []const u8) !void {
-    try self.stack_frame.append(Block.init(
+    try self.stack_frame.append(self.allocator, Block.init(
         text,
         .{
             .font = self.default_font,
