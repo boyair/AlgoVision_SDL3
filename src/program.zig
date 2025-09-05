@@ -184,10 +184,10 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
             },
             else => {},
             .left => {
-                self.op_manager.undoLast(&self.main_view);
+                self.op_manager.undoLast(if (self.freecam) null else &self.main_view);
             },
             .right => {
-                self.op_manager.fastForward(&self.main_view);
+                self.op_manager.fastForward(if (self.freecam) null else &self.main_view);
             },
             .space => {
                 self.pause = !self.pause;
@@ -221,10 +221,10 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
             @field(self, elm).handleEvent(event, mousepos, self.ui_view);
         }
         if (self.fastforward_btn_pressed) {
-            self.op_manager.fastForward(&self.main_view);
+            self.op_manager.fastForward(if (self.freecam) null else &self.main_view);
         }
         if (self.undo_btn_pressed) {
-            self.op_manager.undoLast(&self.main_view);
+            self.op_manager.undoLast(if (self.freecam) null else &self.main_view);
         }
         //click struct to print it (may need refining)
         if (event.* == .mouse_button_down and event.mouse_button_down.button == .right) {
