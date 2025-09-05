@@ -165,6 +165,7 @@ pub fn undoLast(self: *Self, view: ?*View) void {
     const last_action = &self.undo_queue.items[self.undo_queue.items.len - 1];
     last_action.perform(self.allocator, true);
     last_action.deinit(self.allocator);
+    _ = self.op_queue.pop();
 }
 
 pub fn fastForward(self: *Self, view: ?*View) void {
