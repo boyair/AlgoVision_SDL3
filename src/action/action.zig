@@ -95,8 +95,8 @@ pub const Action = union(enum) {
             },
         }
     }
-    pub fn deinit(action: Action, allocator: std.mem.Allocator) void {
-        switch (action) {
+    pub fn deinit(action: *Action, allocator: std.mem.Allocator) void {
+        switch (action.*) {
             .call => |data| {
                 allocator.free(data.new_text);
             },
@@ -107,14 +107,14 @@ pub const Action = union(enum) {
 
             .pop => |_| {},
 
-            .create => |data| {
-                data.block.deinit(allocator);
+            .create => |*data| {
+                data.block.deinit();
             },
 
             .destroy => |_| {},
 
-            .override => |data| {
-                data.block.deinit(allocator);
+            .override => |*data| {
+                data.block.deinit();
             },
         }
     }

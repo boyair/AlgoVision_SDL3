@@ -28,7 +28,7 @@
 
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.15.1",
 
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
@@ -37,12 +37,12 @@
     // internet connectivity.
     .dependencies = .{
         .sdl3 = .{
-            .url = "https://github.com/boyair/zig-sdl3/archive/refs/heads/master.zip",
-            .hash = "sdl3-0.0.1-NmT1Q-sUHADLMmWZBm7Eiuu_mj4jP54yECPc_ASDtr_3",
+            .url = "https://github.com/gota7/zig-sdl3/archive/refs/heads/master.zip",
+            .hash = "sdl3-0.1.1-NmT1QwrgIADlwLUj7GFjg0C94qUCVyEzZ3pNjVublB_W",
         },
         .zig_freetype2 = .{
-            .url = "git+https://github.com/PaNDa2code/zig_freetype2#0fd76b2383bfe08583d43846be18d9fa2e2a5d35",
-            .hash = "zig_freetype2-0.0.0-Yvn9xylrAABFvYfOfu07T_eLlODfXM9YGEBRbB1iK74M",
+            .url = "https://github.com/PaNDa2code/zig_freetype2/archive/refs/heads/master.zip",
+            .hash = "zig_freetype2-0.0.0-Yvn9x8NyAAARum1Kzi6LX478ZB8e-EYfSSD70ChObH6B",
         },
     },
     .paths = .{

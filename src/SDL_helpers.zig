@@ -17,7 +17,7 @@ pub fn checkError(success: bool) sdl.errors.Error!void {
 
 ///initiallize SDL3, a window and a renderer.
 pub fn initSDL(allocator: std.mem.Allocator) !struct { sdl.video.Window, sdl.render.Renderer } {
-    try sdl.init.init(.{
+    try sdl.init(.{
         .video = true,
         .audio = true,
     });
@@ -39,11 +39,11 @@ pub fn deinitSDL(window: sdl.video.Window, renderer: sdl.render.Renderer, alloca
     renderer.deinit();
     text_renderer.deinit();
     window.deinit();
-    sdl.init.quit(.{ .video = true, .audio = true });
+    sdl.quit(.{ .video = true, .audio = true });
 }
 
 pub fn loadImage(renderer: sdl.render.Renderer, relative_path: []const u8, allocator: std.mem.Allocator) !sdl.render.Texture {
-    const full_path = try std.fmt.allocPrintZ(allocator, "{s}/{s}", .{ exe_path, relative_path });
+    const full_path = try std.fmt.allocPrintSentinel(allocator, "{s}/{s}", .{ exe_path, relative_path }, 0);
     defer allocator.free(full_path);
 
     const surf = try sdl.image.loadFile(full_path);
@@ -56,7 +56,7 @@ pub fn cloneTexture(texture: sdl.render.Texture, renderer: sdl.render.Renderer) 
         @panic("Failed to restore render target.");
     };
 
-    const clone = try renderer.createTexture(sdl.pixels.Format.packed_rgba_8_8_8_8, .target, texture.getWidth(), texture.getHeight());
+    const clone = try sdl.render.Texture.init(renderer, sdl.pixels.Format.packed_rgba_8_8_8_8, .target, texture.getWidth(), texture.getHeight());
     try renderer.setTarget(clone);
     try renderer.renderTexture(texture, null, null);
     return clone;

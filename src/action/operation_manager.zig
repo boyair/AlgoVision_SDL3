@@ -5,8 +5,8 @@ const CameraMotion = @import("../camera_motion.zig").Motion(f64);
 const Action = @import("action.zig").Action;
 const View = @import("../view.zig");
 const Self = @This();
-op_queue: std.ArrayList(Action),
-undo_queue: std.ArrayList(Action),
+op_queue: std.ArrayList(Action) = .{},
+undo_queue: std.ArrayList(Action) = .{},
 allocator: std.mem.Allocator,
 /// index of the current operation
 current: usize = 0,
@@ -22,8 +22,6 @@ current_step: Steps = .done,
 
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
-        .op_queue = std.ArrayList(Action).init(allocator),
-        .undo_queue = std.ArrayList(Action).init(allocator),
         .camera_motion = .init(2_000_000_000, .{ .x = 0, .y = 0, .w = 1920, .h = 1080 }, .{ .x = 0, .y = 0, .w = 1920, .h = 1080 }),
         .allocator = allocator,
     };
@@ -35,18 +33,18 @@ pub fn currentActionName(self: *const Self) ?[]const u8 {
 }
 
 pub fn deinit(self: *Self) void {
-    for (self.op_queue.items) |operation| {
+    for (self.op_queue.items) |*operation| {
         operation.deinit(self.allocator);
     }
-    for (self.undo_queue.items) |action| {
+    for (self.undo_queue.items) |*action| {
         action.deinit(self.allocator);
     }
-    self.op_queue.deinit();
-    self.undo_queue.deinit();
+    self.op_queue.deinit(self.allocator);
+    self.undo_queue.deinit(self.allocator);
 }
 
 pub fn append(self: *Self, action: Action) void {
-    self.op_queue.append(action) catch {
+    self.op_queue.append(self.allocator, action) catch {
         @panic("failed to append operation");
     };
 }
@@ -99,8 +97,8 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
             }
         },
         .act => {
-            self.undo_queue.ensureTotalCapacity(self.op_queue.capacity) catch @panic("alloc error");
-            self.undo_queue.append(current_op.perform(self.allocator, false)) catch @panic("alloc error");
+            self.undo_queue.ensureTotalCapacity(self.allocator, self.op_queue.capacity) catch @panic("alloc error");
+            self.undo_queue.append(self.allocator, current_op.perform(self.allocator, false)) catch @panic("alloc error");
             self.current_step.iterate();
         },
         .pause => {
@@ -164,7 +162,7 @@ pub fn undoLast(self: *Self, view: ?*View) void {
     // set minimum of 200ms fir camera motion to prevent cases where the user cant undo
     // an operation because it passed by to quickly.
     self.camera_motion.duration = @max(200000000, self.camera_motion.duration / 2);
-    const last_action = self.undo_queue.pop() orelse unreachable;
+    const last_action = &self.undo_queue.items[self.undo_queue.items.len - 1];
     last_action.perform(self.allocator, true);
     last_action.deinit(self.allocator);
 }
@@ -173,7 +171,7 @@ pub fn fastForward(self: *Self, view: ?*View) void {
     if (self.done) return;
     const current = if (self.current < self.op_queue.items.len) &self.op_queue.items[self.current] else return;
     if (!(@intFromEnum(self.current_step) > @intFromEnum(Steps.act))) {
-        self.undo_queue.append(current.perform(self.allocator, false)) catch @panic("alloc error");
+        self.undo_queue.append(self.allocator, current.perform(self.allocator, false)) catch @panic("alloc error");
     }
     self.current_step = .done;
     if (view) |v| {

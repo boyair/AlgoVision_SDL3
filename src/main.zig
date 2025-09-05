@@ -28,18 +28,23 @@ const threeNums = struct {
     num5: i32 = 5475545,
 };
 
+const intNode = struct {
+    value: i32,
+    next: std.SinglyLinkedList.Node,
+};
+
 pub fn main() !void {
     var program = try Program.init(gpa.allocator());
     global_program = program;
 
-    var list = std.SinglyLinkedList(i32){ .first = program.heap.create(std.SinglyLinkedList(i32).Node{ .data = 32 }, gpa.allocator()) };
+    const ListType = std.SinglyLinkedList;
+    var list: ListType = .{ .first = null };
+    list.first = program.heap.create(ListType.Node{}, gpa.allocator());
     var timer = std.time.Timer.start() catch unreachable;
     for (0..30) |idx| {
-        list.prepend(program.heap.create(std.SinglyLinkedList(i32).Node{ .data = @intCast(idx) }, gpa.allocator()));
+        list.prepend(program.heap.create((intNode{ .value = @intCast(idx), .next = .{} }).next, gpa.allocator()));
         program.heap.update(list.first.?);
     }
-
-    std.debug.print("hello world!!", .{});
     std.debug.print("total: {d}\n", .{timer.read()});
     while (list.popFirst()) |first| {
         program.heap.destroy(first, gpa.allocator());

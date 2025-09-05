@@ -36,13 +36,9 @@ pub fn build(b: *std.Build) void {
     const sdl_mod = sdl_dep.module("sdl3");
 
     const freetype_dep = b.dependency("zig_freetype2", .{});
-    const freetype_mod = freetype_dep.module("zig_freetype2");
+    const freetype_mod = freetype_dep.module("freetype");
     // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
-        // `root_source_file` is the Zig "entry point" of the module. If a module
-        // only contains e.g. external object files, you can make this `null`.
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
@@ -83,8 +79,7 @@ pub fn build(b: *std.Build) void {
     const exe = b.addExecutable(.{
         .name = "AV",
         .root_module = exe_mod,
-        .use_lld = false,
-        // .use_llvm = false,
+        .use_llvm = true,
     });
 
     //exe.linkSystemLibrary("SDL3_mixer");
@@ -133,7 +128,11 @@ pub fn build(b: *std.Build) void {
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
     const exe_unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/test.zig"),
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/test.zig"),
+            .target = target,
+            .optimize = .Debug,
+        }),
     });
     exe_unit_tests.root_module.addImport("sdl3", sdl_mod);
 

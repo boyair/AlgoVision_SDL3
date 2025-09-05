@@ -48,7 +48,7 @@ fn makeTexture(value: f32, design: Design, renderer: sdl.render.Renderer) sdl.re
         @panic(sdl.errors.get() orelse unreachable);
     };
 
-    const texture = renderer.createTexture(sdl.pixels.Format.packed_rgba_4_4_4_4, .target, @intCast(design.resolution.x), @intCast(design.resolution.y)) catch {
+    const texture = sdl.render.Texture.init(renderer, sdl.pixels.Format.packed_rgba_4_4_4_4, .target, @intCast(design.resolution.x), @intCast(design.resolution.y)) catch {
         @panic(sdl.errors.get() orelse unreachable);
     };
     renderer.setTarget(texture) catch {
