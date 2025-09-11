@@ -70,8 +70,6 @@ pub const Action = union(enum) {
 
     ///returns the rectangle related to the action
     pub fn getRect(self: Action) sdl.rect.FRect {
-        // _ = self;
-        // return .{ .x = 0, .y = 0, .w = 1920, .h = 1080 };
         switch (self) {
             .call => |data| {
                 var ret = data.stack.topRect();

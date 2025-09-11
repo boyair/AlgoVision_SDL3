@@ -39,15 +39,16 @@ pub fn main() !void {
 
     const ListType = std.SinglyLinkedList;
     var list: ListType = .{ .first = null };
-    list.first = program.heap.create(ListType.Node{}, gpa.allocator());
+    list.first = &program.heap.create(intNode{ .value = 34, .next = .{ .next = null } }, gpa.allocator()).next;
     var timer = std.time.Timer.start() catch unreachable;
-    for (0..30) |idx| {
-        list.prepend(program.heap.create((intNode{ .value = @intCast(idx), .next = .{} }).next, gpa.allocator()));
-        program.heap.update(list.first.?);
+    for (0..20) |idx| {
+        const node = program.heap.create(intNode{ .value = @intCast(idx), .next = .{ .next = null } }, gpa.allocator());
+        list.prepend(&node.next);
+        program.heap.update(node);
     }
     std.debug.print("total: {d}\n", .{timer.read()});
     while (list.popFirst()) |first| {
-        program.heap.destroy(first, gpa.allocator());
+        program.heap.destroy(@as(*intNode, @fieldParentPtr("next", first)), gpa.allocator());
     }
 
     program.start();

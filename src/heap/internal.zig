@@ -92,7 +92,7 @@ pub const Block = struct {
             },
             else => {
                 // Handles other simple types
-                fields.append(Field.init(val, allocator, null) catch @panic("field init failure")) catch @panic("alloc error");
+                fields.append(allocator, Field.init(val, allocator, null) catch @panic("field init failure")) catch @panic("alloc error");
             },
         }
     }

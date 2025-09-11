@@ -180,7 +180,7 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
         const key = if (event.* == .key_down) event.key_down.key orelse break :keyboard else break :keyboard;
         switch (key) {
             .escape => {
-                self.running = false;
+                //self.running = false;
             },
             else => {},
             .left => {
@@ -228,7 +228,6 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
         }
         //click struct to print it (may need refining)
         if (event.* == .mouse_button_down and event.mouse_button_down.button == .right) {
-            std.debug.print("right click!\n", .{});
             self.heap.data.printBlockOnPoint(self.main_view.revertPoint(sdl.rect.FloatingType, mousepos));
         }
     }

@@ -10,8 +10,6 @@ undo_queue: std.ArrayList(Action) = .{},
 allocator: std.mem.Allocator,
 /// index of the current operation
 current: usize = 0,
-/// if the entire operation queue was performed
-done: bool = false,
 /// the maotion of the camera towards the place of action
 camera_motion: CameraMotion,
 /// pause duration after an action took place so the user can see the change
@@ -28,7 +26,7 @@ pub fn init(allocator: std.mem.Allocator) Self {
 }
 
 pub fn currentActionName(self: *const Self) ?[]const u8 {
-    if (self.current >= self.op_queue.items.len) return null;
+    if (self.isDone()) return null;
     return self.op_queue.items[self.current].name();
 }
 
@@ -70,21 +68,20 @@ pub fn resetState(self: *Self, view: ?*const View) void {
         self.camera_motion.end = current_op.getRect().asOtherRect(f64);
     }
 
-    // self.camera_motion.start = .{ .x = 0, .y = 0, .w = 1920, .h = 1080 };
-    // self.camera_motion.end = .{ .x = 0, .y = 1000, .w = 1920, .h = 1080 };
     self.current_step = @enumFromInt(0);
-    self.done = false;
     self.pause_time = 1_000_000_000;
     self.camera_motion.duration = 2_000_000_000;
     self.camera_motion.setMinSpeed(1);
-    std.debug.print("end: {d}, {d}, {d}, {d}\n", self.camera_motion.end);
+}
+pub fn isDone(self: *const Self) bool {
+    return self.current == self.op_queue.items.len - 1 and self.current_step == .done;
 }
 
 pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
-    if (self.done) return;
+    if (self.isDone()) return;
 
     const current_op = &self.op_queue.items[self.current];
-    // std.debug.print("view: {d}, {d}, {d}, {d}\n", view.?.cam);
+
     switch (self.current_step) {
         .look => {
             self.camera_motion.update(interval_ns);
@@ -98,7 +95,9 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
         },
         .act => {
             self.undo_queue.ensureTotalCapacity(self.allocator, self.op_queue.capacity) catch @panic("alloc error");
-            self.undo_queue.append(self.allocator, current_op.perform(self.allocator, false)) catch @panic("alloc error");
+            const undo_to_add = current_op.perform(self.allocator, false);
+            std.debug.print("added: {s}", .{undo_to_add.name()});
+            self.undo_queue.append(self.allocator, undo_to_add) catch @panic("alloc error");
             self.current_step.iterate();
         },
         .pause => {
@@ -108,68 +107,41 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
             }
         },
         .done => {
-            self.current += 1;
-            self.current_step.iterate();
-            self.done = self.current >= self.op_queue.items.len;
-            if (self.done) {
-                self.current_step = .done;
-            } else {
+            if (!self.isDone()) {
+                self.current += 1;
+                self.current_step.iterate();
                 self.resetState(view);
+                self.printAllUndo();
             }
         },
     }
-
-    // if (current_op.update(interval_ns, self.allocator)) |ret| {
-    //     switch (ret) {
-    //         .action => |undo| {
-    //             // small efficiency gain by preventing repeating reallocations
-    //             //  since undo_queue size maximum will be op_queue size
-    //             self.undo_queue.ensureTotalCapacity(self.op_queue.capacity) catch @panic("alloc error");
-    //
-    //             self.undo_queue.append (undo) catch @panic("alloc error");
-    //         },
-    //         .animation_state => |rect| {
-    //             if (view) |v| {
-    //                 v.cam = rect.asOtherRect(f32);
-    //             }
-    //         },
-    //         .done => {
-    //             self.current += 1;
-    //             self.done =
-    //                 self.current >= self.op_queue.items.len;
-    //             if (self.done)
-    //                 self.op_queue.items[self.op_queue.items.len - 1].current_step = .done;
-    //         },
-    //     }
-    // }
 }
-
 pub fn incrementCurrent(self: *Self) void {
     self.current += 1;
     self.current = @min(self.op_queue.items.len - 1, self.current);
 }
 
 pub fn undoLast(self: *Self, view: ?*View) void {
-    if (self.current < 2) return;
-    self.done = false;
-    while (self.current >= self.op_queue.items.len) self.current -= 1;
+    if (self.current < 2) return; // TODO: test if possible to set it to  minimum of 1
+    std.debug.print("index: {d}\n", .{self.undo_queue.items.len - 1});
+    const last_undo = &self.undo_queue.items[self.undo_queue.items.len - 1];
+    last_undo.perform(self.allocator, true);
+    last_undo.deinit(self.allocator);
+    _ = self.undo_queue.pop();
     if (@intFromEnum(self.current_step) > @intFromEnum(Steps.act)) {
         self.resetState(view);
     } else {
         self.current -= 1;
         self.resetState(view);
     }
-    // set minimum of 200ms fir camera motion to prevent cases where the user cant undo
+
+    // set minimum of 200ms for camera motion to prevent cases where the user cant undo
     // an operation because it passed by to quickly.
     self.camera_motion.duration = @max(200000000, self.camera_motion.duration / 2);
-    const last_action = &self.undo_queue.items[self.undo_queue.items.len - 1];
-    last_action.perform(self.allocator, true);
-    last_action.deinit(self.allocator);
-    _ = self.op_queue.pop();
 }
 
 pub fn fastForward(self: *Self, view: ?*View) void {
-    if (self.done) return;
+    if (self.isDone()) return;
     const current = if (self.current < self.op_queue.items.len) &self.op_queue.items[self.current] else return;
     if (!(@intFromEnum(self.current_step) > @intFromEnum(Steps.act))) {
         self.undo_queue.append(self.allocator, current.perform(self.allocator, false)) catch @panic("alloc error");
@@ -228,6 +200,9 @@ pub fn printAllUndo(self: *Self) void {
             },
             .create => |_| {
                 std.debug.print("create!\t\n", .{});
+            },
+            .override => |data| {
+                std.debug.print("override: {s}", .{data.block.fields.items[0].val});
             },
             .destroy => |_| {
                 std.debug.print("destroy!\t\n", .{});

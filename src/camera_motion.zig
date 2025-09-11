@@ -37,7 +37,6 @@ pub fn Motion(rect_type: type) type {
             if (distance / (self.duration - self.passed) < speed_per_ms) {
                 self.duration = distance / speed_per_ms;
             }
-            std.debug.print("new duration: {d}\n", .{self.duration});
             self.passed = 0;
         }
         pub fn running(self: *const Self) bool {
