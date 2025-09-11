@@ -96,7 +96,6 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
         .act => {
             self.undo_queue.ensureTotalCapacity(self.allocator, self.op_queue.capacity) catch @panic("alloc error");
             const undo_to_add = current_op.perform(self.allocator, false);
-            std.debug.print("added: {s}", .{undo_to_add.name()});
             self.undo_queue.append(self.allocator, undo_to_add) catch @panic("alloc error");
             self.current_step.iterate();
         },
@@ -123,7 +122,6 @@ pub fn incrementCurrent(self: *Self) void {
 
 pub fn undoLast(self: *Self, view: ?*View) void {
     if (self.current < 2) return; // TODO: test if possible to set it to  minimum of 1
-    std.debug.print("index: {d}\n", .{self.undo_queue.items.len - 1});
     const last_undo = &self.undo_queue.items[self.undo_queue.items.len - 1];
     last_undo.perform(self.allocator, true);
     last_undo.deinit(self.allocator);
