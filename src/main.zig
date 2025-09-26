@@ -36,12 +36,11 @@ const intNode = struct {
 pub fn main() !void {
     var program = try Program.init(gpa.allocator());
     global_program = program;
-
     const ListType = std.SinglyLinkedList;
     var list: ListType = .{ .first = null };
     list.first = &program.heap.create(intNode{ .value = 34, .next = .{ .next = null } }, gpa.allocator()).next;
     var timer = std.time.Timer.start() catch unreachable;
-    for (0..20) |idx| {
+    for (0..700) |idx| {
         const node = program.heap.create(intNode{ .value = @intCast(idx), .next = .{ .next = null } }, gpa.allocator());
         list.prepend(&node.next);
         program.heap.update(node);

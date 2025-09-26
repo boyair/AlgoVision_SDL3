@@ -57,7 +57,7 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
                 strct.visited = false;
             }
             const base_rect: TYPE = .{ .x = self.area.x + @divTrunc(self.area.w, 2), .y = self.area.y + @divTrunc(self.area.h, 2), .w = size.x, .h = size.y };
-            return findEmptySpace(base_rect, base_rect, self.existing_rects, .none);
+            return findEmptySpace(base_rect, base_rect, self.existing_rects, .none, self.area).?;
         }
         pub fn remove(self: *Self, rect: TYPE) void {
             for (self.existing_rects.items, 0..) |strct, idx| {
@@ -72,10 +72,10 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
         }
 
         const directed_rects = struct {
-            up: TYPE,
-            down: TYPE,
-            left: TYPE,
-            right: TYPE,
+            up: ?TYPE,
+            down: ?TYPE,
+            left: ?TYPE,
+            right: ?TYPE,
         };
         const bad_rect = TYPE{
             .x = std.math.sqrt(std.math.maxInt(rect_type)) / 4,
@@ -84,18 +84,24 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
             .h = 0,
         };
 
+        fn inArea(area: TYPE, rect: TYPE) bool {
+            return rect.x >= area.x and rect.y >= area.y and
+                rect.x + rect.w <= area.x + area.w and
+                rect.y + rect.h <= area.y + area.h;
+        }
+
         fn findEmptySpace(
             original: TYPE,
             current: TYPE,
             Xlist: std.ArrayList(RectInfo),
             blocked: Direction,
-        ) TYPE {
+            area: TYPE,
+        ) ?TYPE {
             for (Xlist.items, 0..) |*strct, idx| {
                 const rect = strct.rect;
                 if (rect.hasIntersection(current)) {
                     if (strct.visited) {
-                        //return something that cant be nearest to start point
-                        return bad_rect;
+                        return null;
                     }
                     strct.visited = true;
 
@@ -126,48 +132,43 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
                         },
                     };
 
-                    // const diff_right_distance = std.math.pow(sdl.rect.IntegerType, diffed.right.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, diffed.right.y - original.y, 2);
-                    // const diff_left_distance = std.math.pow(sdl.rect.IntegerType, diffed.left.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, diffed.left.y - original.y, 2);
-                    // const diff_down_distance = std.math.pow(sdl.rect.IntegerType, diffed.down.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, diffed.down.y - original.y, 2);
-                    // const diff_up_distance = std.math.pow(sdl.rect.IntegerType, diffed.up.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, diffed.up.y - original.y, 2);
                     const allowed_idx_right = min: {
                         if (blocked == .right) break :min 0;
                         var index = idx;
                         while (index > 0) : (index -= 1) {
                             const rct = Xlist.items[index];
-                            if (rct.rect.x + rct.rect.w < diffed.right.x) break;
+                            if (rct.rect.x + rct.rect.w < diffed.right.?.x) break;
                         }
                         break :min index;
                     };
 
                     const res: directed_rects = .{
                         //the directions that decrease list should be first
-                        .right = if (blocked == .right) bad_rect else findEmptySpace(original, diffed.right, std.ArrayList(RectInfo).fromOwnedSlice(Xlist.items[allowed_idx_right..]), .left),
-                        .down = if (blocked == .down) bad_rect else findEmptySpace(original, diffed.down, Xlist, blocked),
-                        .up = if (blocked == .up) bad_rect else findEmptySpace(original, diffed.up, Xlist, blocked),
-                        .left = if (blocked == .left) bad_rect else findEmptySpace(original, diffed.left, Xlist, .right),
+                        .right = if (blocked == .right) null else findEmptySpace(original, diffed.right.?, std.ArrayList(RectInfo).fromOwnedSlice(Xlist.items[allowed_idx_right..]), .left, area),
+                        .down = if (blocked == .down) null else findEmptySpace(original, diffed.down.?, Xlist, blocked, area),
+                        .up = if (blocked == .up) null else findEmptySpace(original, diffed.up.?, Xlist, blocked, area),
+                        .left = if (blocked == .left) null else findEmptySpace(original, diffed.left.?, Xlist, .right, area),
                     };
 
-                    const right_distance = std.math.pow(sdl.rect.IntegerType, res.right.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, res.right.y - original.y, 2);
-                    // if (diff_down_distance < right_distance) {
-                    //     res.down = if (blocked == .down) bad_rect else findEmptySpace(original, diffed.down, Xlist, blocked, reps);
-                    // }
-                    const down_distance = std.math.pow(sdl.rect.IntegerType, res.down.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, res.down.y - original.y, 2);
-                    // if (diff_down_distance < right_distance) {
-                    //     res.down = if (blocked == .down) bad_rect else findEmptySpace(original, diffed.down, Xlist, blocked, reps);
-                    // }
-                    const left_distance = std.math.pow(sdl.rect.IntegerType, res.left.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, res.left.y - original.y, 2);
-                    const up_distance = std.math.pow(sdl.rect.IntegerType, res.up.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, res.up.y - original.y, 2);
-                    const min_distance = @min(right_distance, down_distance, up_distance, left_distance);
-                    if (min_distance == right_distance) {
-                        return res.right;
-                    } else if (min_distance == down_distance) {
-                        return res.down;
-                    } else if (min_distance == left_distance) {
-                        return res.left;
-                    } else {
-                        return res.up;
+                    //return null if no directions are valid
+                    if (res.up == null and res.down == null and res.left == null and res.right == null) {
+                        return null;
                     }
+
+                    // check the distances for all directions in res and sets it to nearest
+                    var min_distance: sdl.rect.IntegerType = std.math.maxInt(sdl.rect.IntegerType);
+                    var nearest: ?TYPE = null;
+                    inline for (std.meta.fields(directed_rects)) |direction| {
+                        const val = @field(res, direction.name);
+                        if (val) |field_rect| {
+                            const distance = std.math.pow(sdl.rect.IntegerType, field_rect.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, field_rect.y - original.y, 2);
+                            if (min_distance > distance) {
+                                min_distance = distance;
+                                nearest = field_rect;
+                            }
+                        }
+                    }
+                    return nearest;
                 }
             }
             return current;

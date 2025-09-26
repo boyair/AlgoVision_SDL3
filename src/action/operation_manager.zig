@@ -110,7 +110,6 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
                 self.current += 1;
                 self.current_step.iterate();
                 self.resetState(view);
-                self.printAllUndo();
             }
         },
     }
