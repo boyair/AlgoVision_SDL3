@@ -105,32 +105,17 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
                     }
                     strct.visited = true;
 
-                    const diffed: directed_rects = .{
-                        .down = .{
-                            .x = current.x,
-                            .y = rect.y + rect.h,
-                            .w = current.w,
-                            .h = current.h,
-                        },
-                        .right = .{
-                            .x = rect.x + rect.w,
-                            .y = current.y,
-                            .w = current.w,
-                            .h = current.h,
-                        },
-                        .left = .{
-                            .x = rect.x - current.w,
-                            .y = current.y,
-                            .w = current.w,
-                            .h = current.h,
-                        },
-                        .up = .{
-                            .x = current.x,
-                            .y = rect.y - current.h,
-                            .w = current.w,
-                            .h = current.h,
-                        },
+                    // clone current to make changes
+                    var diffed: directed_rects = .{
+                        .down = current,
+                        .right = current,
+                        .left = current,
+                        .up = current,
                     };
+                    diffed.down.?.y = rect.y + rect.h; //move down
+                    diffed.right.?.x = rect.x + rect.w; //move right
+                    diffed.left.?.x = rect.x - current.w; //move left
+                    diffed.up.?.y = rect.y - current.h; //move up
 
                     const allowed_idx_right = min: {
                         if (blocked == .right) break :min 0;
