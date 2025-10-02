@@ -57,7 +57,7 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
                 strct.visited = false;
             }
             const base_rect: TYPE = .{ .x = self.area.x + @divTrunc(self.area.w, 2), .y = self.area.y + @divTrunc(self.area.h, 2), .w = size.x, .h = size.y };
-            return findEmptySpace(base_rect, base_rect, self.existing_rects, .none, self.area).?;
+            return findEmptySpace(base_rect, base_rect, self.existing_rects, .none, self.area) orelse @panic("heap space ran out :(");
         }
         pub fn remove(self: *Self, rect: TYPE) void {
             for (self.existing_rects.items, 0..) |strct, idx| {
@@ -146,10 +146,12 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
                     inline for (std.meta.fields(directed_rects)) |direction| {
                         const val = @field(res, direction.name);
                         if (val) |field_rect| {
-                            const distance = std.math.pow(sdl.rect.IntegerType, field_rect.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, field_rect.y - original.y, 2);
-                            if (min_distance > distance) {
-                                min_distance = distance;
-                                nearest = field_rect;
+                            if (inRect(area, field_rect)) {
+                                const distance = std.math.pow(sdl.rect.IntegerType, field_rect.x - original.x, 2) + std.math.pow(sdl.rect.IntegerType, field_rect.y - original.y, 2);
+                                if (min_distance > distance) {
+                                    min_distance = distance;
+                                    nearest = field_rect;
+                                }
                             }
                         }
                     }
@@ -157,6 +159,12 @@ pub fn spaceFinder(rect_type: type, gap: comptime_int) type {
                 }
             }
             return current;
+        }
+
+        fn inRect(outer: TYPE, inner: TYPE) bool {
+            return inner.x >= outer.x and inner.y >= outer.y and
+                inner.x + inner.w <= outer.x + outer.w and
+                inner.y + inner.h <= outer.y + outer.h;
         }
 
         fn gappedRect(rect: TYPE) sdl.rect.IRect {

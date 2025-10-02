@@ -11,7 +11,7 @@ data: Internal,
 operations: *OperationManager,
 // data that updated on runtime (when code runs) to keep track and know upfront how to operate based on the past.
 existing_rects: std.hash_map.AutoHashMap(*anyopaque, sdl.rect.IRect),
-space_finder: SpaceFinder(sdl.rect.IntegerType, 20),
+space_finder: SpaceFinder(sdl.rect.IntegerType, 4),
 
 pub fn init(self: *Self, operations: *OperationManager, area: sdl.rect.IRect, allocator: std.mem.Allocator, renderer: sdl.render.Renderer, bg_texture_path: []const u8, block_texture_path: []const u8, font: ft.Face) !void {
     self.data = try Internal.init(allocator, renderer, area, bg_texture_path, block_texture_path, font);

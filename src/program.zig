@@ -8,8 +8,6 @@ const UI = @import("ui/UI.zig");
 pub const Stack = @import("stack/interface.zig");
 const Camera = @import("camera_motion.zig").Motion(f64);
 pub const Heap = @import("heap/interface.zig");
-const main = @import("main.zig");
-const main_bg = main.main_bg;
 const Self = @This();
 
 ///A list of all ui element field names.
@@ -35,6 +33,9 @@ ui_view: View,
 op_manager: OperationManager,
 stack: Stack,
 heap: Heap,
+
+//Design
+main_bg: sdl.pixels.Color = .{ .r = 30, .g = 30, .b = 30, .a = 255 },
 
 // UI
 speed_slider: UI.Slider,
@@ -251,7 +252,7 @@ fn draw(self: *Self) !void {
     }
 
     try self.renderer.setTarget(null);
-    try self.renderer.setDrawColor(main_bg);
+    try self.renderer.setDrawColor(self.main_bg);
 
     // draw ui texture on window
     try self.renderer.renderTexture(self.ui_texture, null, self.ui_view.port.asOtherRect(sdl.rect.FloatingType));

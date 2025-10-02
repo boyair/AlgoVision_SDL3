@@ -1,13 +1,9 @@
 const std = @import("std");
-
 const sdl = @import("sdl3");
-
 const Program = @import("program.zig");
 const Stack = @import("stack/internal.zig");
-
 var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
 
-pub const main_bg = sdl.pixels.Color{ .r = 160, .g = 160, .b = 160, .a = 255 };
 var global_program: *Program = undefined;
 fn add(a: i32, b: i32) i32 {
     return global_program.stack.call(add2, .{ a, b }, "add2");
@@ -40,11 +36,12 @@ pub fn main() !void {
     var list: ListType = .{ .first = null };
     list.first = &program.heap.create(intNode{ .value = 34, .next = .{ .next = null } }, gpa.allocator()).next;
     var timer = std.time.Timer.start() catch unreachable;
-    for (0..700) |idx| {
+    for (0..200) |idx| {
         const node = program.heap.create(intNode{ .value = @intCast(idx), .next = .{ .next = null } }, gpa.allocator());
         list.prepend(&node.next);
         program.heap.update(node);
     }
+
     std.debug.print("total: {d}\n", .{timer.read()});
     while (list.popFirst()) |first| {
         program.heap.destroy(@as(*intNode, @fieldParentPtr("next", first)), gpa.allocator());
