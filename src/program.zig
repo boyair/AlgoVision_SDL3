@@ -21,6 +21,8 @@ const UIElements: []const []const u8 = blk: {
     }
     break :blk list;
 };
+//settings
+frame_time_ns: u64 = 1_000_000_000 / 240, // ~240 fps;
 
 // sdl components
 window: sdl.video.Window,
@@ -168,8 +170,9 @@ pub fn start(self: *Self) void {
             if (self.freecam) null else &self.main_view,
         );
         const passed = timer.read();
-        if (passed < 4_000_000)
-            sdl.timer.delayNanoseconds(4_000_000 - passed);
+        //limit frame rate to prevent high cpu/gpu usage
+        if (passed < self.frame_time_ns)
+            sdl.timer.delayNanoseconds(self.frame_time_ns - passed);
         lap_time = timer.lap();
     }
 }
