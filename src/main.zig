@@ -1,8 +1,7 @@
 const std = @import("std");
 const sdl = @import("sdl3");
 const Program = @import("program.zig");
-const Stack = @import("stack/internal.zig");
-var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true }){};
+var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = false }){};
 
 var global_program: *Program = undefined;
 fn add(a: i32, b: i32) i32 {
@@ -29,12 +28,17 @@ const intNode = struct {
     next: std.SinglyLinkedList.Node,
 };
 
+//dummy main function
+fn dummyMain() void {}
 pub fn main() !void {
     var program = try Program.init(gpa.allocator());
+    //program.callMain();
     global_program = program;
+    _ = program.stack.call(add, .{ 5, 6 }, "add");
     const ListType = std.SinglyLinkedList;
     var list: ListType = .{ .first = null };
     list.first = &program.heap.create(intNode{ .value = 34, .next = .{ .next = null } }, gpa.allocator()).next;
+
     var timer = std.time.Timer.start() catch unreachable;
     for (0..200) |idx| {
         const node = program.heap.create(intNode{ .value = @intCast(idx), .next = .{ .next = null } }, gpa.allocator());

@@ -144,3 +144,9 @@ pub fn topRect(self: *const Self) sdl.rect.FRect {
         .h = self.base_rect.h,
     };
 }
+
+pub fn print(self: *Self) void {
+    for (self.stack_frame.items) |block| {
+        std.debug.print("{s}\n", .{block.text});
+    }
+}

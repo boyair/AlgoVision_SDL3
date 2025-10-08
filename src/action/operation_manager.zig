@@ -16,7 +16,7 @@ camera_motion: CameraMotion,
 /// measured in nanoseconds
 pause_time: usize = 1_000_000_000,
 /// the current step of the active operation
-current_step: Steps = .done,
+current_step: Steps = @enumFromInt(0),
 
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
@@ -73,6 +73,7 @@ pub fn resetState(self: *Self, view: ?*const View) void {
     self.camera_motion.duration = 2_000_000_000;
     self.camera_motion.setMinSpeed(1);
 }
+
 pub fn isDone(self: *const Self) bool {
     return self.current == self.op_queue.items.len - 1 and self.current_step == .done;
 }
@@ -107,13 +108,13 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
         },
         .done => {
             if (!self.isDone()) {
-                self.current += 1;
-                self.current_step.iterate();
+                self.incrementCurrent();
                 self.resetState(view);
             }
         },
     }
 }
+
 pub fn incrementCurrent(self: *Self) void {
     self.current += 1;
     self.current = @min(self.op_queue.items.len - 1, self.current);

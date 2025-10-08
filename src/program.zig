@@ -128,8 +128,12 @@ pub fn init(allocator: std.mem.Allocator) !*Self {
     ret.callMain();
     return ret;
 }
+fn dummyMain() void {
+    //dummy main function
+}
 
-fn callMain(self: *Self) void {
+pub fn callMain(self: *Self) void {
+    // self.stack.call(dummyMain, .{}, "main");
     self.op_manager.append(
         .{
             .call = .{
@@ -146,6 +150,7 @@ pub fn start(self: *Self) void {
     var timer = std.time.Timer.start() catch @panic("clock error");
     var lap_time: u64 = 0;
     while (self.running) {
+        self.stack.data.print();
         self.current_action = self.op_manager.currentActionName() orelse "Done!";
         while (sdl.events.poll()) |ev| {
             handleEvent(self, &ev);
@@ -154,9 +159,8 @@ pub fn start(self: *Self) void {
         self.ui_view.portWindowRatio(.{ .x = 0.75, .y = 0, .w = 0.25, .h = 0.50 }, self.window);
         self.draw() catch |err| {
             if (err == sdl.errors.Error.SdlError) {
-                std.log.debug("SDL error: {s}\n", .{sdl.errors.get().?});
+                std.debug.panic("SDL error: {s}\n", .{sdl.errors.get().?});
             }
-            @panic("drawing failure");
         };
         const augmented_time = @as(f64, @floatFromInt(lap_time)) * self.playback_speed;
         self.op_manager.update(
@@ -236,6 +240,7 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
 
 /// draw on window (runs once per frame)
 fn draw(self: *Self) !void {
+    self.stack.data.print();
     try self.renderer.clear();
     // try self.ui_view.fillPort(self.renderer, .{
     //     .color = .{ .r = 255, .g = 0, .b = 0, .a = 255 },
