@@ -15,12 +15,13 @@ camera_motion: CameraMotion,
 /// pause duration after an action took place so the user can see the change
 /// measured in nanoseconds
 pause_time: usize = 1_000_000_000,
+stop_time: usize = 500_000_000,
 /// the current step of the active operation
 current_step: Steps = @enumFromInt(0),
 
 pub fn init(allocator: std.mem.Allocator) Self {
     return .{
-        .camera_motion = .init(2_000_000_000, .{ .x = 0, .y = 0, .w = 1920, .h = 1080 }, .{ .x = 0, .y = 0, .w = 1920, .h = 1080 }),
+        .camera_motion = .init(-1, .{ .x = 0, .y = 0, .w = 1920, .h = 1080 }, .{ .x = 0, .y = 0, .w = 1920, .h = 1080 }),
         .allocator = allocator,
     };
 }
@@ -70,8 +71,9 @@ pub fn resetState(self: *Self, view: ?*const View) void {
 
     self.current_step = @enumFromInt(0);
     self.pause_time = 1_000_000_000;
+    self.stop_time = 500_000_000;
     self.camera_motion.duration = 2_000_000_000;
-    self.camera_motion.setMinSpeed(1);
+    self.camera_motion.setMinSpeed(0.3);
 }
 
 pub fn isDone(self: *const Self) bool {
@@ -85,12 +87,32 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
 
     switch (self.current_step) {
         .look => {
+            //std.debug.print("camera ratio: {d}", .{@as(f32, @floatFromInt(view.?.cam.w / view.?.cam.h))});
+
+            // fix camera_motion for first update
+            if (self.camera_motion.duration == -1) {
+                self.camera_motion.duration = 2_000_000_000;
+                if (view) |v| {
+                    self.camera_motion.start = v.cam.asOtherRect(f64);
+                    self.camera_motion.end = helpers.sameRatioRect(
+                        f64,
+                        helpers.gappedRect(sdl.rect.FloatingType, current_op.getRect(), 100).asOtherRect(f64),
+                        .{ .x = @floatCast(v.cam.w), .y = @floatCast(v.cam.h) },
+                    );
+                }
+            }
             self.camera_motion.update(interval_ns);
             if (view) |v| {
                 v.cam = self.camera_motion.currentRect().asOtherRect(f32);
             }
 
             if (!self.camera_motion.running()) {
+                self.current_step.iterate();
+            }
+        },
+        .stop => {
+            self.stop_time -= @min(@as(usize, @intFromFloat(interval_ns)), self.stop_time);
+            if (self.stop_time == 0) {
                 self.current_step.iterate();
             }
         },
@@ -211,6 +233,7 @@ pub fn printAllUndo(self: *Self) void {
 
 const Steps = enum(u8) {
     look = 0,
+    stop, // a small pause to give user time to comprehand the change
     act,
     pause,
     done,

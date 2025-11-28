@@ -126,7 +126,7 @@ pub fn init(allocator: std.mem.Allocator) !*Self {
         .data = try Stack.Internal.init(allocator, renderer, .{ .x = 50, .y = 800, .w = 600, .h = 100 }, "assets/method.png", stack_font),
         .operations = &ret.op_manager,
     };
-    try ret.heap.init(&ret.op_manager, .{ .x = 100, .y = 0, .w = 512, .h = 512 }, ret.allocator, renderer, "assets/heap.png", "assets/cloud.png", stack_font);
+    try ret.heap.init(&ret.op_manager, .{ .x = 100, .y = 0, .w = 512, .h = 512 }, ret.allocator, renderer, "assets/heap.png", "assets/block.png", stack_font);
     ret.callMain();
     return ret;
 }
@@ -152,7 +152,8 @@ pub fn start(self: *Self) void {
     var timer = std.time.Timer.start() catch @panic("clock error");
     var lap_time: u64 = 0;
     while (self.running) {
-        self.stack.data.print();
+        self.debugPrint();
+
         self.current_action = self.op_manager.currentActionName() orelse "Done!";
         while (sdl.events.poll()) |ev| {
             handleEvent(self, &ev);
@@ -243,7 +244,6 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
 
 /// draw on window (runs once per frame)
 fn draw(self: *Self) !void {
-    self.stack.data.print();
     try self.renderer.clear();
     // try self.ui_view.fillPort(self.renderer, .{
     //     .color = .{ .r = 255, .g = 0, .b = 0, .a = 255 },
@@ -265,6 +265,12 @@ fn draw(self: *Self) !void {
     // draw ui texture on window
     try self.renderer.renderTexture(self.ui_texture, null, self.ui_view.port.asOtherRect(sdl.rect.FloatingType));
     try self.renderer.present();
+}
+
+fn debugPrint(self: *const Self) void {
+    _ = self;
+    //  std.debug.print("rect: {d},{d},{d},{d}\n", self.stack.data.topRect());
+    //  std.debug.print("view: {d},{d},{d},{d}\n", self.op_manager.camera_motion.end);
 }
 
 /// deinitiallize the program

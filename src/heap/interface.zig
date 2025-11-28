@@ -110,9 +110,15 @@ pub fn destroy(self: *Self, ptr: anytype, allocator: std.mem.Allocator) void {
 pub fn update(self: *Self, ptr: anytype) void {
     const is_slice = @typeInfo(@TypeOf(ptr)).pointer.size == .slice;
     const real_ptr = if (is_slice) ptr.ptr else ptr;
+    const real_value = if (is_slice) ptr else ptr.*;
     const existing_rect = self.existing_rects.getPtr(real_ptr) orelse @panic("updating non allocated memory");
     const block =
-        Internal.Block.init(ptr.*, .{ .font = self.data.default_font, .text_color = .{ .r = 255, .g = 0, .b = 0, .a = 255 } }, self.operations.allocator, .{ .x = existing_rect.x, .y = existing_rect.y });
+        Internal.Block.init(
+            real_value,
+            .{ .font = self.data.default_font, .text_color = .{ .r = 255, .g = 0, .b = 0, .a = 255 } },
+            self.operations.allocator,
+            .{ .x = existing_rect.x, .y = existing_rect.y },
+        );
     existing_rect.* = block.rect;
     self.operations.append(
         .{

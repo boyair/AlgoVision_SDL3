@@ -94,7 +94,7 @@ pub inline fn functionFormat(name: []const u8, args: anytype) []const u8 {
         var fmt = name;
         fmt = fmt ++ "(";
         for (0..fields.len) |_| {
-            fmt = fmt ++ "{}, ";
+            fmt = fmt ++ "{any}, ";
         }
         if (fields.len > 0)
             fmt = fmt[0 .. fmt.len - 2];

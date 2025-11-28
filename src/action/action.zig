@@ -32,6 +32,7 @@ pub const Action = union(enum) {
 
             .pop => |data| {
                 const top_block = data.stack_frame.pop() orelse @panic("pop an empty stack");
+                data.height -= 1;
                 defer top_block.deinit(data.allocator);
                 if (!is_undo) return .{ .call = .{ .stack = data, .new_text = allocator.dupe(u8, top_block.text) catch unreachable } };
             },
@@ -73,7 +74,7 @@ pub const Action = union(enum) {
         switch (self) {
             .call => |data| {
                 var ret = data.stack.topRect();
-                ret.y += data.stack.base_rect.h;
+                ret.y -= data.stack.base_rect.h; // because function was not yet called!
                 return ret;
             },
             .pop => |data| {

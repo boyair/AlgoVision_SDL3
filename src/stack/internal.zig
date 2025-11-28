@@ -137,9 +137,10 @@ pub const Design = struct {
 
 pub fn topRect(self: *const Self) sdl.rect.FRect {
     if (self.stack_frame.items.len == 0) return self.base_rect;
+    
     return sdl.rect.FRect{
         .x = self.base_rect.x,
-        .y = self.base_rect.y - @as(f32, @floatFromInt(self.height)) * self.base_rect.h,
+        .y = self.base_rect.y - @as(f32, @floatFromInt(self.height - 1)) * self.base_rect.h,
         .w = self.base_rect.w,
         .h = self.base_rect.h,
     };
