@@ -71,7 +71,7 @@ pub fn init(allocator: std.mem.Allocator) !*Self {
     const stack_font = try Helpers.loadFont("assets/font/fint.ttf", allocator);
 
     const win_size = try window.getSize();
-    const Pwin_size: sdl.rect.IPoint = .{ .x = @intCast(win_size.width), .y = @intCast(win_size.height) };
+    const Pwin_size: sdl.rect.IPoint = .{ .x = @intCast(win_size.@"0"), .y = @intCast(win_size.@"1") };
 
     const main_view = View{
         .cam = .{
@@ -181,7 +181,7 @@ pub fn start(self: *Self) void {
 /// handle event (runs once per frame)
 fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
     const mouse_state = sdl.mouse.getState();
-    const mousepos: sdl.rect.FPoint = .{ .x = mouse_state.x, .y = mouse_state.y };
+    const mousepos: sdl.rect.FPoint = .{ .x = mouse_state.@"1", .y = mouse_state.@"2" };
     if (event.* == .quit) {
         self.running = false;
     }
@@ -208,10 +208,10 @@ fn handleEvent(self: *Self, event: *const sdl.events.Event) void {
         const mouse_relative_state = sdl.mouse.getRelativeState();
 
         if (self.freecam) {
-            if (mouse_state.flags.left and
+            if (mouse_state.@"0".left and
                 !self.ui_view.port.pointIn(mousepos.asOtherPoint(sdl.rect.IntegerType)))
             {
-                const mouse_diff: sdl.rect.FPoint = .{ .x = mouse_relative_state.x, .y = mouse_relative_state.y };
+                const mouse_diff: sdl.rect.FPoint = .{ .x = mouse_relative_state.@"1", .y = mouse_relative_state.@"2" };
                 const scaled_diff: sdl.rect.FPoint = self.main_view.unscalePoint(sdl.rect.FloatingType, mouse_diff);
                 self.main_view.cam.x -= scaled_diff.x;
                 self.main_view.cam.y -= scaled_diff.y;

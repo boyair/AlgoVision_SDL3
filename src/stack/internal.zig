@@ -121,8 +121,8 @@ pub const Block = struct {
 
         const text_rect = helpers.centrelizedRect(
             sdl.rect.FloatingType,
-            .{ .x = 0, .y = 0, .w = texture_size.width, .h = texture_size.height },
-            .{ .x = @min(@as(sdl.rect.FloatingType, @floatFromInt(self.text.len * 40)), texture_size.width - 50), .y = 100 },
+            .{ .x = 0, .y = 0, .w = texture_size.@"0", .h = texture_size.@"1" },
+            .{ .x = @min(@as(sdl.rect.FloatingType, @floatFromInt(self.text.len * 40)), texture_size.@"0" - 50), .y = 100 },
         );
         try renderer.renderTexture(text_texture, null, text_rect);
         return texture;
@@ -137,7 +137,7 @@ pub const Design = struct {
 
 pub fn topRect(self: *const Self) sdl.rect.FRect {
     if (self.stack_frame.items.len == 0) return self.base_rect;
-    
+
     return sdl.rect.FRect{
         .x = self.base_rect.x,
         .y = self.base_rect.y - @as(f32, @floatFromInt(self.height - 1)) * self.base_rect.h,

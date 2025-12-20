@@ -37,12 +37,12 @@
     // internet connectivity.
     .dependencies = .{
         .sdl3 = .{
-            .url = "https://github.com/gota7/zig-sdl3/archive/refs/heads/master.zip",
-            .hash = "sdl3-0.1.1-NmT1QwrgIADlwLUj7GFjg0C94qUCVyEzZ3pNjVublB_W",
+            .url = "git+https://github.com/Gota7/zig-sdl3?ref=v0.1.5#014b7bcb2899f3ed9c945c4abfcfe1b25d75bfeb",
+            .hash = "sdl3-0.1.5-NmT1QxARJgAH1Wp0cMBJDAc9vD7weufTkIwVa5rehA2q",
         },
         .zig_freetype2 = .{
             .url = "https://github.com/PaNDa2code/zig_freetype2/archive/refs/heads/master.zip",
-            .hash = "zig_freetype2-0.0.0-Yvn9x8NyAAARum1Kzi6LX478ZB8e-EYfSSD70ChObH6B",
+            .hash = "zig_freetype2-0.0.0-Yvn9x8VwAABxwv6ArXvo2F5_yp-mH7didCapQLHpPqab",
         },
     },
     .paths = .{

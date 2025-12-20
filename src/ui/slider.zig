@@ -139,7 +139,7 @@ fn handleEvent(event: *const sdl.events.Event, float: *f32, design: Design, rela
     slider_relative.x /= slider_rect.w;
     slider_relative.y -= slider_rect.y;
     slider_relative.y /= slider_rect.h;
-    if (sdl.mouse.getState().flags.left) {
+    if (sdl.mouse.getState().@"0".left) {
         float.* = design.range.min + slider_relative.x * design.range.size();
         float.* = @max(design.range.min, @min(design.range.max, float.*));
     }
