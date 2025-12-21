@@ -5,17 +5,21 @@ const CameraMotion = @import("../camera_motion.zig").Motion(f64);
 const Action = @import("action.zig").Action;
 const View = @import("../view.zig");
 const Self = @This();
+
+// defaults
+const DEFAULT_PAUSE_TIME = 1_000_000_000;
+const DEFAULT_STOP_TIME = 500_000_000;
+
 op_queue: std.ArrayList(Action) = .{},
 undo_queue: std.ArrayList(Action) = .{},
 allocator: std.mem.Allocator,
-/// index of the current operation
-current: usize = 0,
+current_action: usize = 0,
 /// the maotion of the camera towards the place of action
 camera_motion: CameraMotion,
 /// pause duration after an action took place so the user can see the change
 /// measured in nanoseconds
-pause_time: usize = 1_000_000_000,
-stop_time: usize = 500_000_000,
+pause_time: usize = DEFAULT_PAUSE_TIME,
+stop_time: usize = DEFAULT_STOP_TIME,
 /// the current step of the active operation
 current_step: Steps = @enumFromInt(0),
 
@@ -28,7 +32,7 @@ pub fn init(allocator: std.mem.Allocator) Self {
 
 pub fn currentActionName(self: *const Self) ?[]const u8 {
     if (self.isDone()) return null;
-    return self.op_queue.items[self.current].name();
+    return self.op_queue.items[self.current_action].name();
 }
 
 pub fn deinit(self: *Self) void {
@@ -50,7 +54,7 @@ pub fn append(self: *Self, action: Action) void {
 
 // TODO: make view not optional and remove the need for a fallback (cahnges should be in update function)
 pub fn resetState(self: *Self, view: ?*const View) void {
-    const current_op = &self.op_queue.items[self.current];
+    const current_op = &self.op_queue.items[self.current_action];
     self.camera_motion.passed = 0;
 
     if (view) |v| {
@@ -77,13 +81,13 @@ pub fn resetState(self: *Self, view: ?*const View) void {
 }
 
 pub fn isDone(self: *const Self) bool {
-    return self.current == self.op_queue.items.len - 1 and self.current_step == .done;
+    return self.current_action == self.op_queue.items.len - 1 and self.current_step == .done;
 }
 
 pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
     if (self.isDone()) return;
 
-    const current_op = &self.op_queue.items[self.current];
+    const current_op = &self.op_queue.items[self.current_action];
 
     switch (self.current_step) {
         .look => {
@@ -137,13 +141,22 @@ pub fn update(self: *Self, interval_ns: f64, view: ?*View) void {
     }
 }
 
+//returns false
+//pub fn pause(time_left: *usize, interval_ns: f64) bool {
+//    if(time_left>sdl.time.)
+//    time_left -= @min(@as(usize, @intFromFloat(interval_ns)), self.pause_time);
+//    if (self.pause_time == 0) {
+//        self.current_step.iterate();
+//    }
+//}
+
 pub fn incrementCurrent(self: *Self) void {
-    self.current += 1;
-    self.current = @min(self.op_queue.items.len - 1, self.current);
+    self.current_action += 1;
+    self.current_action = @min(self.op_queue.items.len - 1, self.current_action);
 }
 
 pub fn undoLast(self: *Self, view: ?*View) void {
-    if (self.current < 2) return; // TODO: test if possible to set it to  minimum of 1
+    if (self.current_action < 2) return; // TODO: test if possible to set it to  minimum of 1
     const last_undo = &self.undo_queue.items[self.undo_queue.items.len - 1];
     last_undo.perform(self.allocator, true);
     last_undo.deinit(self.allocator);
@@ -151,7 +164,7 @@ pub fn undoLast(self: *Self, view: ?*View) void {
     if (@intFromEnum(self.current_step) > @intFromEnum(Steps.act)) {
         self.resetState(view);
     } else {
-        self.current -= 1;
+        self.current_action -= 1;
         self.resetState(view);
     }
 
@@ -162,7 +175,7 @@ pub fn undoLast(self: *Self, view: ?*View) void {
 
 pub fn fastForward(self: *Self, view: ?*View) void {
     if (self.isDone()) return;
-    const current = if (self.current < self.op_queue.items.len) &self.op_queue.items[self.current] else return;
+    const current = if (self.current_action < self.op_queue.items.len) &self.op_queue.items[self.current_action] else return;
     if (!(@intFromEnum(self.current_step) > @intFromEnum(Steps.act))) {
         self.undo_queue.append(self.allocator, current.perform(self.allocator, false)) catch @panic("alloc error");
     }
