@@ -3,6 +3,7 @@ const sdl = @import("sdl3");
 const ft = @import("freetype");
 const View = @import("view.zig");
 const Helpers = @import("SDL_helpers.zig");
+const Time = @import("time.zig");
 const OperationManager = @import("action/operation_manager.zig");
 const UI = @import("ui/UI.zig");
 pub const Stack = @import("stack/interface.zig");
@@ -22,7 +23,7 @@ const UIElements: []const []const u8 = blk: {
     break :blk list;
 };
 //settings
-frame_time_ns: u64 = 1_000_000_000 / 240, // ~240 fps;
+frame_time: Time = Time.init(1.0 / 240.0, .Seconds) catch unreachable, // 240 fps;
 
 // sdl components
 window: sdl.video.Window,
@@ -150,7 +151,7 @@ pub fn callMain(self: *Self) void {
 /// run main program loop
 pub fn start(self: *Self) void {
     var timer = std.time.Timer.start() catch @panic("clock error");
-    var lap_time: u64 = 0;
+    var lap_time: Time = Time.init(0, .Microseconds) catch unreachable;
     while (self.running) {
         self.debugPrint();
 
@@ -165,16 +166,20 @@ pub fn start(self: *Self) void {
                 std.debug.panic("SDL error: {s}\n", .{sdl.errors.get().?});
             }
         };
-        const augmented_time = @as(f64, @floatFromInt(lap_time)) * self.playback_speed;
+        const augmented_time = lap_time.multiply(@floatCast(self.playback_speed)) catch unreachable;
         self.op_manager.update(
-            if (self.pause) 0 else augmented_time,
+            if (self.pause) 0 else augmented_time.getAs(f64, .Nanoseconds),
             if (self.freecam) null else &self.main_view,
         );
-        const passed = timer.read();
-        //limit frame rate to prevent high cpu/gpu usage
-        if (passed < self.frame_time_ns)
-            sdl.timer.delayNanoseconds(self.frame_time_ns - passed);
-        lap_time = timer.lap();
+        const passed = Time.init(timer.read(), .Nanoseconds) catch unreachable;
+        //std.debug.print("{}, {}\n", passed);
+        //std.debug.print("{}, {}\n", self.frame_time);
+        //limit frame rate to prevent system overload
+        if (passed.compareTo(self.frame_time) < 0) {
+            std.debug.print("delay: {}\n", .{self.frame_time.subtract(passed).getAs(u64, .Nanoseconds)});
+            sdl.timer.delayNanoseconds(self.frame_time.subtract(passed).getAs(u64, .Nanoseconds));
+        }
+        lap_time = Time.init(timer.lap(), .Nanoseconds) catch unreachable;
     }
 }
 
